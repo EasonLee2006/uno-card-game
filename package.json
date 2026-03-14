@@ -1,0 +1,23 @@
+{
+  "name": "uno-card-game",
+  "version": "1.0.0",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/EasonLee2006/uno-card-game.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/EasonLee2006/uno-card-game/issues"
+  },
+  "homepage": "https://github.com/EasonLee2006/uno-card-game#readme",
+  "description": "",
+  "dependencies": {
+    "express": "^5.2.1"
+  }
+}
