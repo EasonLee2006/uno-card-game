@@ -18,6 +18,7 @@
   "homepage": "https://github.com/EasonLee2006/uno-card-game#readme",
   "description": "",
   "dependencies": {
-    "express": "^5.2.1"
+    "express": "^5.2.1",
+    "socket.io": "^4.8.3"
   }
 }

@@ -1,3 +1,5 @@
+const socket = io();
+
 const myHand = [
     {color:    "red", value: "7"},
     {color:   "blue", value: "skip"},
@@ -21,7 +23,10 @@ function renderHand(){
         cardElement.innerText = card.value;
 
         cardElement.addEventListener("click", ()=>{
+            const cardData = { color: card.color, value: card.value };
             console.log(`clicked ${card.value} of ${card.color}`);
+            socket.emit("playCard", cardData);
+            cardElement.remove();
         });
         handContainer.appendChild(cardElement);
     });
