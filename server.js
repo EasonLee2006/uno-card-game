@@ -14,6 +14,8 @@ io.on( "connection", (socket)=>{
 
     socket.on( "playCard", ( cardData )=>{
         console.log(`Player ${socket.id} played `, cardData);
+
+        io.emit("updateTable", cardData);
     } );
 
     socket.on( "disconnect", ()=>{

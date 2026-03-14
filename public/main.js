@@ -32,4 +32,13 @@ function renderHand(){
     });
 }
 
+socket.on( "updateTable", (cardData)=>{
+    console.log("received info: played card", {cardData});
+
+    const discardPile = document.getElementById("discard-pile");
+
+    discardPile.className = `card ${cardData.color}`;
+    discardPile.innerHTML = cardData.value;
+} );
+
 renderHand();
