@@ -2,6 +2,10 @@ const myHand = [
     {color:    "red", value: "7"},
     {color:   "blue", value: "skip"},
     {color: "yellow", value: "10"},
+    {color:  "black", value: "wild"},
+    {color:  "green", value: "+2"},
+    {color:   "blue", value: "3"},
+    {color:    "red", value: "7"},
 ];
 
 const handContainer = document.getElementById("player-hand");

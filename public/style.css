@@ -4,6 +4,7 @@
     height: 100vh;
     justify-content: space-between;
     background-color: #2b5b32;
+    margin: -8px;
 }
 
 #player-hand{
@@ -17,16 +18,22 @@
 .card{
     width: 80px;
     height: 120px;
+    box-sizing: border-box;
     border-radius: 10px;
-    border: 2px solid white;
+    border: 5px solid white;
     display: flex;
     align-items: center;
     justify-content: center;
+    font-family: sans-serif;
     font-size: 32px;
     font-weight: bold;
+    -webkit-text-stroke: 2px black;
+    -webkit-text-fill-color: white;
     cursor: pointer;
 }
 
 .red    {background-color: #ff5555; color: white;}
 .blue   {background-color: #5555ff; color: white;}
 .yellow {background-color: #ffff55; color: white;}
+.green  {background-color: #55ff55; color: white;}
+.black  {background-color: #333344; color: white;}
