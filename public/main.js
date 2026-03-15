@@ -4,6 +4,30 @@ let myHand = [];
 
 const handContainer = document.getElementById("player-hand");
 
+function canPlayCard( cardData ){
+    const discardPile = document.getElementById("discard-pile");
+    console.log("discard-pile:", { color: discardPile.classList[1], value: discardPile.innerHTML} );
+
+    const handColor = cardData.color
+    const handValue = cardData.value
+
+    const tableColor = discardPile.classList[1];
+    const tableValue = discardPile.innerHTML;
+
+    if( !tableColor ){
+        console.log("no previous cards, can play card");
+        return true;
+    }
+
+    if( handColor == tableColor || handValue == tableValue ){
+        console.log("cards matched, can play card");
+        return true;
+    }
+
+    console.log("cannot play card");
+    return false;
+}
+
 function renderHand(){
     handContainer.innerHTML = "";
 
@@ -17,8 +41,13 @@ function renderHand(){
         cardElement.addEventListener("click", ()=>{
             const cardData = { color: card.color, value: card.value };
             console.log(`clicked ${card.value} of ${card.color}`);
-            socket.emit("playCard", cardData);
-            cardElement.remove();
+            
+            if( !canPlayCard(cardData) ){ 
+                return; 
+            }else{
+                socket.emit("playCard", cardData);
+                cardElement.remove();
+            }
         });
         handContainer.appendChild(cardElement);
     });
@@ -37,6 +66,14 @@ socket.on( "updateTable", (cardData)=>{
 
     const discardPile = document.getElementById("discard-pile");
 
+    if( !cardData.color ){ // when discard pile is empty
+        console.log("discard pile is empty");
+        discardPile.className = "";
+        discardPile.innerHTML = "";
+        return;
+    }
+
+    console.log("update discard pile");
     discardPile.className = `card ${cardData.color}`;
     discardPile.innerHTML = cardData.value;
 } );

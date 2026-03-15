@@ -1,3 +1,4 @@
+const { table } = require("console");
 const express = require("express");
 const http = require("http");
 const { start } = require("repl");
@@ -13,6 +14,7 @@ app.use(express.static("public"));
 
 // card deck utilities
 let deck = [];
+let tableCard = {color: "", value: ""};
 let players = {};
 
 function buildDeck(){
@@ -49,6 +51,9 @@ console.log("Deck is ready to deal. Total cards:", deck.length);
 function dealCardToPlayer( socket ){
     const startingHand = [];
     for(let i=0 ; i<7 ; i++){
+        if(deck.length <= 0){
+            console.log("deck is empty, cannot draw cards");
+        }
         startingHand.push( deck.pop() );
     }
 
@@ -62,10 +67,11 @@ io.on( "connection", (socket)=>{
     console.log(`A user has connected to the server. Socket ID: ${socket.id}`);
 
     dealCardToPlayer(socket);
+    socket.emit("updateTable", tableCard);
 
     socket.on( "playCard", ( cardData )=>{
         console.log(`Player ${socket.id} played `, cardData);
-
+        tableCard = cardData;
         io.emit("updateTable", cardData);
     } );
 
