@@ -4,6 +4,18 @@ let myHand = [];
 
 const handContainer = document.getElementById("player-hand");
 
+function removeCardOnce(arr, card){
+    const index = arr.findIndex( (c) => { return c.color === card.color && c.value === card.value } );
+    if( index > -1 ){
+        arr.splice(index, 1);
+        console.log("removed card from hand", card);
+        return true;
+    }else{
+        console.log("cannot find card to remove");
+        return false;
+    }
+}
+
 function canPlayCard( cardData ){
     const discardPile = document.getElementById("discard-pile");
     console.log("discard-pile:", { color: discardPile.classList[1], value: discardPile.innerHTML} );
@@ -45,14 +57,15 @@ function renderHand(){
             if( !canPlayCard(cardData) ){ 
                 return; 
             }else{
-                socket.emit("playCard", cardData);
+                // TODO: server isde validation
+                socket.emit("playCardRequest", cardData);
+                removeCardOnce(myHand, cardData);
                 cardElement.remove();
             }
         });
         handContainer.appendChild(cardElement);
     });
 }
-
 
 socket.on("yourHand", (dealtCards)=>{
     console.log("got dealt cards from server: ", dealtCards);
@@ -66,7 +79,7 @@ socket.on( "updateTable", (cardData)=>{
 
     const discardPile = document.getElementById("discard-pile");
 
-    if( !cardData.color ){ // when discard pile is empty
+    if( cardData == null ){ // when discard pile is empty
         console.log("discard pile is empty");
         discardPile.className = "";
         discardPile.innerHTML = "";
@@ -77,5 +90,19 @@ socket.on( "updateTable", (cardData)=>{
     discardPile.className = `card ${cardData.color}`;
     discardPile.innerHTML = cardData.value;
 } );
+
+
+// draw card
+const drawCardButton = document.getElementById("draw-card-button");
+drawCardButton.addEventListener( "click", () => {
+    socket.emit("drawCardRequest");
+} );
+
+socket.on("drawCardResponse", (cardData)=>{
+    console.log("drew card", cardData);
+    myHand.push(cardData);
+
+    renderHand();
+});
 
 renderHand();

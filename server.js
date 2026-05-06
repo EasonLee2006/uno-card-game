@@ -14,7 +14,7 @@ app.use(express.static("public"));
 
 // card deck utilities
 let deck = [];
-let tableCard = {color: "", value: ""};
+let tableCard = null;
 let players = {};
 
 function buildDeck(){
@@ -62,6 +62,44 @@ function dealCardToPlayer( socket ){
     socket.emit("yourHand", startingHand);
 }
 
+function removeCardOnce(arr, card){
+    const index = arr.findIndex( (c) => { return c.color === card.color && c.value === card.value } );
+    if( index > -1 ){
+        arr.splice(index, 1);
+        console.log("removed card from hand", card);
+        return true;
+    }else{
+        console.log("cannot find card to remove");
+        return false;
+    }
+}
+
+function drawCardAndRespond( socket ){
+    const drawnedCard = deck.pop();
+    console.log(`Player ${socket.id} drew the card`, drawnedCard);
+    players[socket.id].push( drawnedCard );
+    socket.emit("drawCardResponse", drawnedCard);
+}
+
+function isCheating( socket, card ){
+    const index = players[socket.id].findIndex( (c) => { return c.color === card.color && c.value === card.value } );
+    if(index < 0){
+        return true;
+    }
+    else return false;
+}
+
+function isCardPlayValid( socket, card ){
+    if(tableCard == null){
+        return true;
+    }
+    if( card.color == tableCard.color || card.value == tableCard.value ){
+        return true;
+    }else{
+        return false;
+    }
+}
+
 // connection
 io.on( "connection", (socket)=>{
     console.log(`A user has connected to the server. Socket ID: ${socket.id}`);
@@ -69,10 +107,33 @@ io.on( "connection", (socket)=>{
     dealCardToPlayer(socket);
     socket.emit("updateTable", tableCard);
 
-    socket.on( "playCard", ( cardData )=>{
+    socket.on( "playCardRequest", ( cardData )=>{   
         console.log(`Player ${socket.id} played `, cardData);
-        tableCard = cardData;
-        io.emit("updateTable", cardData);
+
+        if( isCheating(socket, cardData) ){
+            console.log("player is cheating", socket.id);
+        }
+
+        if( !isCardPlayValid(socket, cardData) ){
+            console.log("card play isn't valid");
+        }else{
+            tableCard = cardData;
+            removeCardOnce( players[socket.id], cardData );
+
+            console.log("played card", cardData);
+            console.log(`player ${socket.id} now has`, players[socket.id]);
+            
+            io.emit("updateTable", cardData);
+        }
+
+        // tableCard = cardData;
+        // removeCardOnce( players[socket.id], cardData );
+        // io.emit("updateTable", cardData);
+        // console.log(`Player ${socket.id} now has `, players[socket.id]);
+    } );
+
+    socket.on( "drawCardRequest", ()=>{
+        drawCardAndRespond( socket );
     } );
 
     socket.on( "disconnect", ()=>{
