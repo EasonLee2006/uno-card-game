@@ -1,8 +1,9 @@
 const { table } = require("console");
-const express = require("express");
-const http = require("http");
 const { start } = require("repl");
-const { Server } = require("socket.io");
+
+import express from "express";
+import http from 'http';
+import { Server, Socket } from 'socket.io';
 
 const app = express();
 const server = http.createServer( app );
@@ -11,22 +12,28 @@ const io = new Server(server);
 const PORT = 3000;
 app.use(express.static("public"));
 
+type CardColor = "red"| "blue"| "green"| "yellow";
+
+interface Card {
+    color: CardColor;
+    value: string;
+};
 
 // card deck utilities
-let deck = [];
-let tableCard = null;
-let players = {};
+let deck: Card[] = [];
+let tableCard: Card; //undefined
+let players: Record< string, Card[] > = {};
 
 function buildDeck(){
-    const colors = ["red", "blue", "green", "yellow"];
-    const values = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "skip", "turn", "+2"];
+    const colors: CardColor[] = ["red", "blue", "green", "yellow"];
+    const values: string[] = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "skip", "turn", "+2"];
 
-    let newDeck = [];
+    let newDeck: Card[] = [];
 
     for(let color of colors){
         for(let value of values){
             newDeck.push( { color: color, value: value } );
-            if( value == 0 ) continue; // only 1 zero in each color
+            if( value == "0" ) continue; // only 1 zero in each color
 
             newDeck.push( { color: color, value: value } );
         }
@@ -34,13 +41,11 @@ function buildDeck(){
     return newDeck;
 }
 
-function shuffle( /** @type {Array} */ cardDeck ){
+function shuffle( cardDeck: Card[] ){
     for(let i = cardDeck.length-1 ; i>0 ; i--){
         const j = Math.floor(Math.random() * (i + 1));
 
-        let temp = cardDeck[i];
-        cardDeck[i] = cardDeck[j];
-        cardDeck[j] = temp;
+        [ cardDeck[i], cardDeck[j] ] = [ cardDeck[j]!, cardDeck[i]! ];
     }
 }
 
@@ -48,13 +53,13 @@ deck = buildDeck();
 shuffle( deck );
 console.log("Deck is ready to deal. Total cards:", deck.length);
 
-function dealCardToPlayer( socket ){
-    const startingHand = [];
+function dealCardToPlayer( socket: Socket ){
+    const startingHand: Card[] = [];
     for(let i=0 ; i<7 ; i++){
         if(deck.length <= 0){
             console.log("deck is empty, cannot draw cards");
         }
-        startingHand.push( deck.pop() );
+        startingHand.push( deck.pop()! );
     }
 
     players[socket.id] = startingHand;
@@ -62,7 +67,7 @@ function dealCardToPlayer( socket ){
     socket.emit("yourHand", startingHand);
 }
 
-function removeCardOnce(arr, card){
+function removeCardOnce(arr: Card[], card: Card){
     const index = arr.findIndex( (c) => { return c.color === card.color && c.value === card.value } );
     if( index > -1 ){
         arr.splice(index, 1);
@@ -74,14 +79,14 @@ function removeCardOnce(arr, card){
     }
 }
 
-function drawCardAndRespond( socket ){
-    const drawnedCard = deck.pop();
+function drawCardAndRespond( socket: Socket ){
+    const drawnedCard: Card = deck.pop();
     console.log(`Player ${socket.id} drew the card`, drawnedCard);
     players[socket.id].push( drawnedCard );
     socket.emit("drawCardResponse", drawnedCard);
 }
 
-function isCheating( socket, card ){
+function isCheating( socket: Socket, card: Card ){
     const index = players[socket.id].findIndex( (c) => { return c.color === card.color && c.value === card.value } );
     if(index < 0){
         return true;
@@ -89,7 +94,7 @@ function isCheating( socket, card ){
     else return false;
 }
 
-function isCardPlayValid( socket, card ){
+function isCardPlayValid( card: Card ){
     if(tableCard == null){
         return true;
     }
@@ -101,20 +106,20 @@ function isCardPlayValid( socket, card ){
 }
 
 // connection
-io.on( "connection", (socket)=>{
+io.on( "connection", (socket: Socket)=>{
     console.log(`A user has connected to the server. Socket ID: ${socket.id}`);
 
     dealCardToPlayer(socket);
     socket.emit("updateTable", tableCard);
 
-    socket.on( "playCardRequest", ( cardData )=>{   
+    socket.on( "playCardRequest", ( cardData: Card )=>{   
         console.log(`Player ${socket.id} played `, cardData);
 
         if( isCheating(socket, cardData) ){
             console.log("player is cheating", socket.id);
         }
 
-        if( !isCardPlayValid(socket, cardData) ){
+        if( !isCardPlayValid( cardData ) ){
             console.log("card play isn't valid");
         }else{
             tableCard = cardData;
