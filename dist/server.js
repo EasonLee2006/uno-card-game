@@ -1,18 +1,15 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 const { table } = require("console");
 const { start } = require("repl");
-const express_1 = __importDefault(require("express"));
-const http_1 = __importDefault(require("http"));
+const express = require("express");
+const http = require("http");
 const socket_io_1 = require("socket.io");
-const app = (0, express_1.default)();
-const server = http_1.default.createServer(app);
+const app = express();
+const server = http.createServer(app);
 const io = new socket_io_1.Server(server);
 const PORT = 3000;
-app.use(express_1.default.static("public"));
+app.use(express.static("public"));
 ;
 // card deck utilities
 let deck = [];
@@ -47,7 +44,8 @@ function dealCardToPlayer(socket) {
         if (deck.length <= 0) {
             console.log("deck is empty, cannot draw cards");
         }
-        startingHand.push(deck.pop());
+        else
+            startingHand.push(deck.pop());
     }
     players[socket.id] = startingHand;
     socket.emit("yourHand", startingHand);
@@ -65,6 +63,10 @@ function removeCardOnce(arr, card) {
     }
 }
 function drawCardAndRespond(socket) {
+    if (deck.length <= 0) {
+        console.log("deck is empty, cannot draw cards");
+        return;
+    }
     const drawnedCard = deck.pop();
     console.log(`Player ${socket.id} drew the card`, drawnedCard);
     players[socket.id].push(drawnedCard);

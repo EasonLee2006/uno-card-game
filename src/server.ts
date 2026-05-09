@@ -1,9 +1,11 @@
 const { table } = require("console");
 const { start } = require("repl");
 
-import express from "express";
-import http from 'http';
+import express = require("express");
+import http = require("http");
+
 import { Server, Socket } from 'socket.io';
+
 
 const app = express();
 const server = http.createServer( app );
@@ -59,7 +61,7 @@ function dealCardToPlayer( socket: Socket ){
         if(deck.length <= 0){
             console.log("deck is empty, cannot draw cards");
         }
-        startingHand.push( deck.pop()! );
+        else startingHand.push( deck.pop()! );
     }
 
     players[socket.id] = startingHand;
@@ -80,14 +82,18 @@ function removeCardOnce(arr: Card[], card: Card){
 }
 
 function drawCardAndRespond( socket: Socket ){
-    const drawnedCard: Card = deck.pop();
+    if(deck.length <= 0){
+        console.log("deck is empty, cannot draw cards");
+        return;
+    }
+    const drawnedCard: Card = deck.pop()!;
     console.log(`Player ${socket.id} drew the card`, drawnedCard);
-    players[socket.id].push( drawnedCard );
+    players[socket.id]!.push( drawnedCard );
     socket.emit("drawCardResponse", drawnedCard);
 }
 
 function isCheating( socket: Socket, card: Card ){
-    const index = players[socket.id].findIndex( (c) => { return c.color === card.color && c.value === card.value } );
+    const index = players[socket.id]!.findIndex( (c) => { return c.color === card.color && c.value === card.value } );
     if(index < 0){
         return true;
     }
@@ -123,7 +129,7 @@ io.on( "connection", (socket: Socket)=>{
             console.log("card play isn't valid");
         }else{
             tableCard = cardData;
-            removeCardOnce( players[socket.id], cardData );
+            removeCardOnce( players[socket.id]!, cardData );
 
             console.log("played card", cardData);
             console.log(`player ${socket.id} now has`, players[socket.id]);
