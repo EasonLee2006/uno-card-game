@@ -79,7 +79,7 @@ socket.on( "updateTable", (cardData)=>{
 
     const discardPile = document.getElementById("discard-pile");
 
-    if( cardData == null ){ // when discard pile is empty
+    if( cardData == undefined ){ // when discard pile is empty
         console.log("discard pile is empty");
         discardPile.className = "";
         discardPile.innerHTML = "";
