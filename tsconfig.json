@@ -1,6 +1,8 @@
 {
   // Visit https://aka.ms/tsconfig to read more about this file
   "compilerOptions": {
+    "ignoreDeprecations": "6.0",
+    
     // File Layout
     "rootDir": "./src",
     "outDir": "./dist",
@@ -12,7 +14,7 @@
     // "types": [],
     // For nodejs:
     "lib": ["esnext"],
-    "types": ["node"],
+    "types": ["jest", "node"],
     // and npm install -D @types/node
 
     // Other Outputs
@@ -40,5 +42,9 @@
     "noUncheckedSideEffectImports": true,
     "moduleDetection": "force",
     "skipLibCheck": true,
-  }
+  },
+  "include": ["src/**/*"],
+  "exclude": [
+    "src/**/*.test.ts"
+  ]
 }

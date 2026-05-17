@@ -44,7 +44,7 @@ export class UnoGame {
 
     // ********** public functions **********
 
-    public addPlayer(socketID: string): Card[] {
+    public addPlayerAndDealCards(socketID: string): Card[] {
         const startingHand: Card[] = [];
         for (let i = 0; i < 7; i++) {
             if (this.deck.length <= 0) {
@@ -92,5 +92,12 @@ export class UnoGame {
             this.players[ socketID ].push( drawnCard );
         }
         return drawnCard;
+    }
+
+    public setPlayerHand( socketID: string, cards: Card[] ): void{
+        // will not remove cards from drawing pile
+        this.players[socketID] = cards;
+        
+        return;
     }
 }

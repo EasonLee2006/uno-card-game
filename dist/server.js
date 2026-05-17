@@ -9,7 +9,7 @@ const server = http.createServer(app);
 const io = new socket_io_1.Server(server);
 const PORT = 3000;
 app.use(express.static("public"));
-const activeGame = new UnoGame_1.UnoGame;
+const activeGame = new UnoGame_1.UnoGame();
 // connection
 io.on("connection", (socket) => {
     console.log(`A user has connected to the server. Socket ID: ${socket.id}`);
@@ -22,7 +22,7 @@ io.on("connection", (socket) => {
             console.log(`Invalid card play by ${socket.id} . Reason: ${result.reason}`);
             return;
         }
-        activeGame.updateTableCard(cardData);
+        activeGame.setTableCard(cardData);
         io.emit("updateTable", cardData);
         console.log(`Player ${socket.id} played card ${cardData.color} ${cardData.value}`);
     });

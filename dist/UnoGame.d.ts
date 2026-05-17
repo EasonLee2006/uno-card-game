@@ -3,7 +3,7 @@ export declare class UnoGame {
     private deck;
     private tableCard;
     getTableCard(): Card | undefined;
-    updateTableCard(cardData: Card): void;
+    setTableCard(cardData: Card): void;
     private players;
     getPlayers(): Record<string, Card[]>;
     constructor();

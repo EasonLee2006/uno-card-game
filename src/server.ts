@@ -13,13 +13,13 @@ const io = new Server(server);
 const PORT = 3000;
 app.use(express.static("public"));
 
-const activeGame = new UnoGame;
+const activeGame = new UnoGame();
 
 // connection
 io.on( "connection", (socket: Socket)=>{
     console.log(`A user has connected to the server. Socket ID: ${socket.id}`);
 
-    const startingHand = activeGame.addPlayer( socket.id );
+    const startingHand = activeGame.addPlayerAndDealCards( socket.id );
     socket.emit("yourHand", startingHand)
     socket.emit( "updateTable", activeGame.getTableCard() );
 

@@ -1,4 +1,0 @@
-express
-socket.io
-typescript --save-dev
-@types/express @types/node --save-dev

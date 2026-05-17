@@ -6,7 +6,7 @@ class UnoGame {
     tableCard = undefined;
     getTableCard() { return this.tableCard; }
     ;
-    updateTableCard(cardData) { this.tableCard = cardData; }
+    setTableCard(cardData) { this.tableCard = cardData; }
     ;
     players = {};
     getPlayers() { return this.players; }
