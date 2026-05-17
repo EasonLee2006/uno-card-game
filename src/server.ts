@@ -2,7 +2,7 @@ import express = require("express");
 import http = require("http");
 import { Server, Socket } from 'socket.io';
 
-import { Card, CardColor } from "./types";
+import { Card } from "./types";
 import { UnoGame } from "./UnoGame";
 
 
@@ -30,7 +30,7 @@ io.on( "connection", (socket: Socket)=>{
             return;
         }
         
-        activeGame.updateTableCard( cardData );
+        activeGame.setTableCard( cardData );
         io.emit("updateTable", cardData);
         console.log(`Player ${socket.id} played card ${cardData.color} ${cardData.value}`);
 

@@ -5,7 +5,7 @@ export class UnoGame {
 
     private tableCard: Card | undefined = undefined;
     public getTableCard() :Card | undefined { return this.tableCard; };
-    public updateTableCard( cardData: Card ){ this.tableCard = cardData };
+    public setTableCard( cardData: Card ){ this.tableCard = cardData };
 
     private players: Record<string, Card[]> = {};
     public getPlayers() { return this.players; };
