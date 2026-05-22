@@ -14,7 +14,7 @@
     // "types": [],
     // For nodejs:
     "lib": ["esnext"],
-    "types": ["jest", "node"],
+    "types": ["node", "jest"],
     // and npm install -D @types/node
 
     // Other Outputs
@@ -44,7 +44,4 @@
     "skipLibCheck": true,
   },
   "include": ["src/**/*"],
-  "exclude": [
-    "src/**/*.test.ts"
-  ]
 }

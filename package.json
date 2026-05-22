@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "main": "server.js",
   "scripts": {
+    "build": "tsc -p tsconfig.build.json",
     "test": "jest",
     "start": "npx tsc; node dist/server.js"
   },

@@ -36,7 +36,7 @@ class UnoGame {
         }
     }
     // ********** public functions **********
-    addPlayer(socketID) {
+    addPlayerAndDealCards(socketID) {
         const startingHand = [];
         for (let i = 0; i < 7; i++) {
             if (this.deck.length <= 0) {
@@ -77,6 +77,11 @@ class UnoGame {
             this.players[socketID].push(drawnCard);
         }
         return drawnCard;
+    }
+    setPlayerHand(socketID, cards) {
+        // will not remove cards from drawing pile
+        this.players[socketID] = cards;
+        return;
     }
 }
 exports.UnoGame = UnoGame;

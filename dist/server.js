@@ -13,7 +13,7 @@ const activeGame = new UnoGame_1.UnoGame();
 // connection
 io.on("connection", (socket) => {
     console.log(`A user has connected to the server. Socket ID: ${socket.id}`);
-    const startingHand = activeGame.addPlayer(socket.id);
+    const startingHand = activeGame.addPlayerAndDealCards(socket.id);
     socket.emit("yourHand", startingHand);
     socket.emit("updateTable", activeGame.getTableCard());
     socket.on("playCardRequest", (cardData) => {

@@ -9,12 +9,13 @@ export declare class UnoGame {
     constructor();
     private buildDeck;
     private shuffle;
-    addPlayer(socketID: string): Card[];
+    addPlayerAndDealCards(socketID: string): Card[];
     removePlayer(socketID: string): void;
     tryPlayCard(socketID: string, cardData: Card): {
         success: boolean;
         reason?: string;
     };
     drawCard(socketID: string): Card | null;
+    setPlayerHand(socketID: string, cards: Card[]): void;
 }
 //# sourceMappingURL=UnoGame.d.ts.map
