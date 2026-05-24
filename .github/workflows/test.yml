@@ -3,7 +3,7 @@ name: UNO Game Tests
 # Tell GitHub to run this script every time you push to the main branch
 on:
   push:
-    branches: [ "main", "master" ]
+    branches: [ "main", "master", "unit-test" ]
 
 jobs:
   run-tests:
