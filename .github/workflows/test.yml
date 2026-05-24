@@ -1,0 +1,30 @@
+name: UNO Game Tests
+
+# Tell GitHub to run this script every time you push to the main branch
+on:
+  push:
+    branches: [ "main", "master" ]
+
+jobs:
+  run-tests:
+    # This tells GitHub to spin up a temporary Linux server
+    runs-on: ubuntu-latest
+
+    steps:
+    # 1. Download your code onto the temporary server
+    - name: Check out repository
+      uses: actions/checkout@v4
+
+    # 2. Install Node.js on the server
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+
+    # 3. Install your dependencies (like Jest and Typescript)
+    - name: Install dependencies
+      run: npm install
+
+    # 4. Run the exact test command you use locally
+    - name: Run Jest tests
+      run: npm test
