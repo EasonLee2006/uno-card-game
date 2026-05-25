@@ -1,4 +1,4 @@
-import { Card } from "./types";
+import { Card, Gamestate } from "./types";
 export declare class UnoGame {
     private deck;
     private tableCard;
@@ -6,9 +6,18 @@ export declare class UnoGame {
     setTableCard(cardData: Card): void;
     private players;
     getPlayers(): Record<string, Card[]>;
+    setPlayerHand(socketID: string, cards: Card[]): void;
+    private turnOrder;
+    private currentTurnIndex;
+    private turnDirection;
+    getActivePlayerID(): string | undefined;
+    getGameState(): Gamestate;
     constructor();
     private buildDeck;
     private shuffle;
+    private getNextPlayerIndex;
+    private handleTurnIndexOnDisconnection;
+    private reverseTurnDirection;
     addPlayerAndDealCards(socketID: string): Card[];
     removePlayer(socketID: string): void;
     tryPlayCard(socketID: string, cardData: Card): {
@@ -16,6 +25,5 @@ export declare class UnoGame {
         reason?: string;
     };
     drawCard(socketID: string): Card | null;
-    setPlayerHand(socketID: string, cards: Card[]): void;
 }
 //# sourceMappingURL=UnoGame.d.ts.map

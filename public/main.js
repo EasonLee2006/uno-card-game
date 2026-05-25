@@ -1,6 +1,7 @@
 const socket = io();
 
 let myHand = [];
+let myTurn = false;
 
 const handContainer = document.getElementById("player-hand");
 
@@ -17,6 +18,11 @@ function removeCardOnce(arr, card){
 }
 
 function canPlayCard( cardData ){
+    if( !myTurn ){
+        console.log("not your turn");
+        return false;
+    }
+
     const discardPile = document.getElementById("discard-pile");
     console.log("discard-pile:", { color: discardPile.classList[1], value: discardPile.innerHTML} );
 
@@ -57,8 +63,8 @@ function renderHand(){
             if( !canPlayCard(cardData) ){ 
                 return; 
             }else{
-                // TODO: server isde validation
                 socket.emit("playCardRequest", cardData);
+                myTurn = false;
                 removeCardOnce(myHand, cardData);
                 cardElement.remove();
             }
@@ -66,6 +72,10 @@ function renderHand(){
         handContainer.appendChild(cardElement);
     });
 }
+
+socket.on("connect", () => {
+  console.log(`my socket id: ${socket.id}`); // Example: "ojIckSD2jqNzOqIrAGzL"
+});
 
 socket.on("yourHand", (dealtCards)=>{
     console.log("got dealt cards from server: ", dealtCards);
@@ -89,6 +99,30 @@ socket.on( "updateTable", (cardData)=>{
     console.log("update discard pile");
     discardPile.className = `card ${cardData.color}`;
     discardPile.innerHTML = cardData.value;
+} );
+
+socket.on( "updateGameState", (gameState)=>{
+
+    // *** update table card ***
+    const discardPile = document.getElementById("discard-pile");
+
+    if( gameState.tableCard == undefined ){ // when discard pile is empty
+        console.log("discard pile is empty");
+        discardPile.className = "";
+        discardPile.innerHTML = "";
+    }else{
+        console.log("update table card");
+        discardPile.className = `card ${gameState.tableCard.color}`;
+        discardPile.innerHTML = gameState.tableCard.value;
+    }
+
+
+    // *** update turns ***
+    if( gameState.activePlayerID == socket.id ){
+        myTurn = true;
+    }else{
+        myTurn = false;
+    }
 } );
 
 

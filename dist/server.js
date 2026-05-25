@@ -15,7 +15,7 @@ io.on("connection", (socket) => {
     console.log(`A user has connected to the server. Socket ID: ${socket.id}`);
     const startingHand = activeGame.addPlayerAndDealCards(socket.id);
     socket.emit("yourHand", startingHand);
-    socket.emit("updateTable", activeGame.getTableCard());
+    socket.emit("updateGameState", activeGame.getGameState());
     socket.on("playCardRequest", (cardData) => {
         const result = activeGame.tryPlayCard(socket.id, cardData);
         if (!result.success) {
@@ -23,7 +23,7 @@ io.on("connection", (socket) => {
             return;
         }
         activeGame.setTableCard(cardData);
-        io.emit("updateTable", cardData);
+        io.emit("updateGameState", activeGame.getGameState());
         console.log(`Player ${socket.id} played card ${cardData.color} ${cardData.value}`);
     });
     socket.on("drawCardRequest", () => {

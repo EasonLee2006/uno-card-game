@@ -4,3 +4,8 @@ export interface Card {
     color: CardColor;
     value: string;
 };
+
+export interface Gamestate{
+    tableCard: Card | undefined;
+    activePlayerID: string | undefined;
+}

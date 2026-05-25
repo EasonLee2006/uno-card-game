@@ -2,7 +2,7 @@ import express = require("express");
 import http = require("http");
 import { Server, Socket } from 'socket.io';
 
-import { Card } from "./types";
+import { Card, Gamestate } from "./types";
 import { UnoGame } from "./UnoGame";
 
 
@@ -21,7 +21,7 @@ io.on( "connection", (socket: Socket)=>{
 
     const startingHand = activeGame.addPlayerAndDealCards( socket.id );
     socket.emit("yourHand", startingHand)
-    socket.emit( "updateTable", activeGame.getTableCard() );
+    socket.emit( "updateGameState", activeGame.getGameState() );
 
     socket.on( "playCardRequest", ( cardData: Card )=>{   
         const result: {success: boolean, reason?: string} = activeGame.tryPlayCard( socket.id, cardData );
@@ -31,7 +31,9 @@ io.on( "connection", (socket: Socket)=>{
         }
         
         activeGame.setTableCard( cardData );
-        io.emit("updateTable", cardData);
+
+        io.emit("updateGameState", activeGame.getGameState());
+        
         console.log(`Player ${socket.id} played card ${cardData.color} ${cardData.value}`);
 
     } );

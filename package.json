@@ -5,7 +5,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "test": "jest",
-    "start": "npx tsc; node dist/server.js"
+    "start": "node dist/server.js"
   },
   "repository": {
     "type": "git",
