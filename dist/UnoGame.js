@@ -34,7 +34,7 @@ class UnoGame {
     // ********** private functions **********
     buildDeck() {
         const colors = ["red", "blue", "green", "yellow"];
-        const values = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "skip", "turn", "+2"];
+        const values = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "skip", "reverse", "+2"];
         let newDeck = [];
         for (let color of colors) {
             for (let value of values) {
@@ -75,7 +75,18 @@ class UnoGame {
     }
     handleTurnIndexOnDisconnection(socketID) {
         const index = this.turnOrder.indexOf(socketID);
-        if (index > -1) {
+        if (index <= -1) {
+            console.log("cannot find player to disconnect");
+            return this.currentTurnIndex;
+        }
+        if (index != this.currentTurnIndex) { // disconnected player isn't active
+            let result = this.currentTurnIndex;
+            if (index < result) {
+                result--;
+            }
+            return result;
+        }
+        else { // disconnected player is active
             // pass to the next player, also prevents negative modulation
             let result = this.getNextPlayerIndex(this.currentTurnIndex);
             this.turnOrder.splice(index, 1);

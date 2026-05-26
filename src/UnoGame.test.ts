@@ -21,6 +21,7 @@ describe("UnoGame Logic", ()=>{
     test("should reject card if player doesn't own the card", ()=>{
         const socketID: string = "hacker-2";
 
+        const startingHand: Card[] = game.addPlayerAndDealCards( socketID );
         game.setPlayerHand(  socketID, [ {color: "yellow", value: "skip"} ]);
 
         const fakeCard: Card = {color: "red", value: "skip"};

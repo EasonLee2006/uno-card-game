@@ -88,8 +88,19 @@ export class UnoGame {
 
     private handleTurnIndexOnDisconnection( socketID: string ): number{
         const index = this.turnOrder.indexOf( socketID );
-        
-        if( index > -1 ){
+        if( index <= -1 ){
+            console.log("cannot find player to disconnect");
+            return this.currentTurnIndex;
+        }
+        if( index != this.currentTurnIndex ){ // disconnected player isn't active
+            let result = this.currentTurnIndex;
+            if( index < result ){
+                result--;
+            }
+            return result
+        }
+        else{ // disconnected player is active
+            
             // pass to the next player, also prevents negative modulation
             let result: number = this.getNextPlayerIndex( this.currentTurnIndex );
             
