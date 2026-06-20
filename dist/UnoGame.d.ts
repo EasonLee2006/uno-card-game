@@ -24,6 +24,10 @@ export declare class UnoGame {
         success: boolean;
         reason?: string;
     };
-    drawCard(socketID: string): Card | null;
+    drawCard(socketID: string): {
+        success: boolean;
+        reason?: string;
+        cardData?: Card;
+    };
 }
 //# sourceMappingURL=UnoGame.d.ts.map

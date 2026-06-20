@@ -39,12 +39,13 @@ io.on( "connection", (socket: Socket)=>{
     } );
 
     socket.on( "drawCardRequest", ()=>{
-        const drawnCard = activeGame.drawCard( socket.id );
-        if( !drawnCard ){
-            console.log( "Draw pile is empty." );
+        const result: {success: boolean, reason?: string, cardData?: Card} = activeGame.drawCard( socket.id );
+        if( !result.success ){
+            console.log(`Invalid draw card by ${socket.id} . Reason: ${result.reason}`);
             return;
         }
 
+        const drawnCard = result.cardData!;
         console.log(`Player ${socket.id} drew ${drawnCard.color} ${drawnCard.value}`);
         socket.emit("drawCardResponse", drawnCard);
     } );
@@ -52,6 +53,8 @@ io.on( "connection", (socket: Socket)=>{
     socket.on( "disconnect", ()=>{
         console.log(`A user has disconnected. Socket ID: ${socket.id}`);
         activeGame.removePlayer( socket.id );
+        io.emit("updateGameState", activeGame.getGameState());
+
     } );
 });
 

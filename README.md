@@ -20,9 +20,10 @@ npm install
 ```
 
 - step 3:
-start the server
+build the code and start the server
 ```bash
-node dist/server.js
+npm run build
+npm start
 ```
 
 - step 4:
@@ -30,10 +31,10 @@ go to http://localhost:3000/ in your browser to check the result
 
 ## How to develop
 
-**DO NOT modify the files under `dist/` , they are generated with the files under `src/` .**
+**DO NOT modify the files under `dist/` , they are generated from the files under `src/` .**
 
 ### frontend
-modify the files under `punlic/` as you want. then start the server and go to http://localhost:3000/ to check out the result.
+modify the files under `public/` as you want. then start the server and go to http://localhost:3000/ to check out the result.
 
 ### backend
 modify the files under `src/` as you want. then start the server and go to http://localhost:3000/ to check out the result.

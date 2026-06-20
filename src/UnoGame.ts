@@ -97,10 +97,11 @@ export class UnoGame {
             if( index < result ){
                 result--;
             }
+            this.turnOrder.splice(index, 1);
             return result
         }
         else{ // disconnected player is active
-            
+
             // pass to the next player, also prevents negative modulation
             let result: number = this.getNextPlayerIndex( this.currentTurnIndex );
             
@@ -136,6 +137,7 @@ export class UnoGame {
         this.players[socketID] = startingHand;
         this.turnOrder.push(socketID);
 
+        console.log(this.turnOrder);
         console.log(`active player id: ${this.getActivePlayerID()}`);
         return startingHand;
     }
@@ -143,12 +145,13 @@ export class UnoGame {
     public removePlayer( socketID: string ): void{
         delete this.players[socketID];
         this.currentTurnIndex = this.handleTurnIndexOnDisconnection( socketID );
+        console.log(this.turnOrder);
     }
 
     public tryPlayCard( socketID: string, cardData: Card ): { success: boolean, reason?: string }{
         
         // turn-based
-        const activePlayerID: string | undefined = this.turnOrder[ this.currentTurnIndex ];
+        const activePlayerID: string | undefined = this.getActivePlayerID();
         if( socketID !== activePlayerID ){
             return { success: false, reason: "It is not your turn!" };
         }
@@ -182,13 +185,20 @@ export class UnoGame {
         return {success: true};
     }
 
-    public drawCard( socketID: string ): Card | null{
-        if ( this.deck.length <= 0 ) return null;
+    public drawCard( socketID: string ): {success: boolean, reason?: string, cardData?: Card}{
+        const activePlayerID: string | undefined = this.turnOrder[ this.currentTurnIndex ];
+        
+        // turn-based
+        if( socketID !== activePlayerID ) return { success: false, reason: "It is not your turn!" };
 
+        // make sure deck isnt empty
+        if ( this.deck.length <= 0 ) return {success: false, reason: "deck is empty"};
+
+        // (success)
         const drawnCard = this.deck.pop()!;
         if( this.players[socketID] ){
             this.players[ socketID ].push( drawnCard );
         }
-        return drawnCard;
+        return {success: true, cardData: drawnCard};
     }
 }

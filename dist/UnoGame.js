@@ -84,6 +84,7 @@ class UnoGame {
             if (index < result) {
                 result--;
             }
+            this.turnOrder.splice(index, 1);
             return result;
         }
         else { // disconnected player is active
@@ -114,16 +115,18 @@ class UnoGame {
         }
         this.players[socketID] = startingHand;
         this.turnOrder.push(socketID);
+        console.log(this.turnOrder);
         console.log(`active player id: ${this.getActivePlayerID()}`);
         return startingHand;
     }
     removePlayer(socketID) {
         delete this.players[socketID];
         this.currentTurnIndex = this.handleTurnIndexOnDisconnection(socketID);
+        console.log(this.turnOrder);
     }
     tryPlayCard(socketID, cardData) {
         // turn-based
-        const activePlayerID = this.turnOrder[this.currentTurnIndex];
+        const activePlayerID = this.getActivePlayerID();
         if (socketID !== activePlayerID) {
             return { success: false, reason: "It is not your turn!" };
         }
@@ -152,13 +155,19 @@ class UnoGame {
         return { success: true };
     }
     drawCard(socketID) {
+        const activePlayerID = this.turnOrder[this.currentTurnIndex];
+        // turn-based
+        if (socketID !== activePlayerID)
+            return { success: false, reason: "It is not your turn!" };
+        // make sure deck isnt empty
         if (this.deck.length <= 0)
-            return null;
+            return { success: false, reason: "deck is empty" };
+        // (success)
         const drawnCard = this.deck.pop();
         if (this.players[socketID]) {
             this.players[socketID].push(drawnCard);
         }
-        return drawnCard;
+        return { success: true, cardData: drawnCard };
     }
 }
 exports.UnoGame = UnoGame;

@@ -129,11 +129,16 @@ socket.on( "updateGameState", (gameState)=>{
 // draw card
 const drawCardButton = document.getElementById("draw-card-button");
 drawCardButton.addEventListener( "click", () => {
+    if( !myTurn ){
+        console.log("not your turn");
+        return;
+    }
+    
     socket.emit("drawCardRequest");
 } );
 
 socket.on("drawCardResponse", (cardData)=>{
-    console.log("drew card", cardData);
+    console.log("drawn card: ", cardData);
     myHand.push(cardData);
 
     renderHand();
