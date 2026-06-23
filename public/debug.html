@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UNO Server Debugger</title>
+    <style>
+        body {
+            font-family: 'Courier New', Courier, monospace;
+            background-color: #1e1e1e;
+            color: #d4d4d4;
+            margin: 0;
+            padding: 20px;
+        }
+        h1 { color: #569cd6; border-bottom: 1px solid #333; padding-bottom: 10px; }
+        .grid {
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            gap: 20px;
+        }
+        .panel {
+            background-color: #252526;
+            border: 1px solid #3c3c3c;
+            border-radius: 8px;
+            padding: 15px;
+        }
+        .stat-row { margin-bottom: 10px; font-size: 16px; }
+        .highlight { color: #ce9178; font-weight: bold; }
+        
+        .player-row {
+            background-color: #2d2d30;
+            margin-bottom: 15px;
+            padding: 15px;
+            border-radius: 6px;
+            border-left: 5px solid transparent;
+        }
+        /* Highlight the player whose turn it currently is */
+        .player-row.active-turn {
+            border-left-color: #4caf50;
+            background-color: #1e3a24;
+        }
+        
+        .hand {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        .card {
+            width: 50px;
+            height: 75px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+            text-shadow: 1px 1px 2px black;
+            border: 2px solid white;
+        }
+        /* Color coding */
+        .red { background-color: #d32f2f; }
+        .blue { background-color: #1976d2; }
+        .green { background-color: #388e3c; }
+        .yellow { background-color: #fbc02d; color: black; text-shadow: none; border-color: black; }
+        .wild { background-color: #212121; }
+        
+        .error { color: #f44336; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <h1>🖥️ Server Status Visualizer</h1>
+    <div id="connection-status" class="stat-row">Connecting to server...</div>
+
+    <div class="grid">
+        <!-- Left Column: Global Table State -->
+        <div class="panel">
+            <h2>Table State</h2>
+            <div class="stat-row">Cards in Deck: <span id="deck-size" class="highlight">0</span></div>
+            <div class="stat-row">Direction: <span id="direction" class="highlight">Clockwise</span></div>
+            <div class="stat-row">Total Players: <span id="player-count" class="highlight">0</span></div>
+            
+            <h3 style="margin-top: 30px;">Top Card</h3>
+            <div id="table-card-container">
+                <!-- Table card injected here -->
+                <div style="color: #888">None</div>
+            </div>
+        </div>
+
+        <!-- Right Column: Player Roster & Hands -->
+        <div class="panel">
+            <h2>Player Hands (Turn Order)</h2>
+            <div id="players-container">
+                <!-- Players injected here -->
+                <div style="color: #888">Waiting for players to connect...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const connectionStatus = document.getElementById('connection-status');
+        const playersContainer = document.getElementById('players-container');
+        
+        // Helper to generate a card HTML element
+        function createCardElement(card) {
+            if (!card) return '<div class="card wild">?</div>';
+            return `<div class="card ${card.color}">${card.value}</div>`;
+        }
+
+        // Main function to fetch data and update the screen
+        async function fetchServerState() {
+            try {
+                const response = await fetch('/api/debug');
+                if (!response.ok) throw new Error("Server not responding");
+                
+                const state = await response.json();
+                connectionStatus.innerHTML = "🟢 Connected & Syncing (updates every 1s)";
+                connectionStatus.style.color = "#4caf50";
+
+                // Update Table Data
+                document.getElementById('deck-size').innerText = state.deckSize;
+                document.getElementById('direction').innerText = state.playDirection === 1 ? "Clockwise (↓)" : "Counter-Clockwise (↑)";
+                document.getElementById('player-count').innerText = state.turnOrder.length;
+                document.getElementById('table-card-container').innerHTML = createCardElement(state.tableCard);
+
+                // Update Players Data
+                playersContainer.innerHTML = ""; // Clear old data
+                
+                if (state.turnOrder.length === 0) {
+                    playersContainer.innerHTML = '<div style="color: #888">No players connected.</div>';
+                    return;
+                }
+
+                state.turnOrder.forEach((socketId, index) => {
+                    const isMyTurn = (index === state.currentPlayerIndex);
+                    const hand = state.players[socketId] || [];
+                    
+                    // Generate the HTML for this player's hand
+                    const cardsHtml = hand.map(card => createCardElement(card)).join('');
+
+                    // Create the row
+                    const playerDiv = document.createElement('div');
+                    playerDiv.className = `player-row ${isMyTurn ? 'active-turn' : ''}`;
+                    playerDiv.innerHTML = `
+                        <div>
+                            <strong>Player ID:</strong> ${socketId} 
+                            ${isMyTurn ? '<span style="color: #4caf50; margin-left: 10px;">⭐ CURRENT TURN</span>' : ''}
+                        </div>
+                        <div style="margin-top: 5px; color: #aaa;">Card Count: ${hand.length}</div>
+                        <div class="hand">
+                            ${cardsHtml}
+                        </div>
+                    `;
+                    playersContainer.appendChild(playerDiv);
+                });
+
+            } catch (error) {
+                connectionStatus.innerHTML = "🔴 Lost connection to server. Is Node running?";
+                connectionStatus.style.color = "#f44336";
+                console.error(error);
+            }
+        }
+
+        // Fetch immediately, then poll every 1000 milliseconds (1 second)
+        fetchServerState();
+        setInterval(fetchServerState, 1000);
+    </script>
+</body>
+</html>

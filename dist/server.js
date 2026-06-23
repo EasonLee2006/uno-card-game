@@ -9,6 +9,11 @@ const server = http.createServer(app);
 const io = new socket_io_1.Server(server);
 const PORT = 3000;
 app.use(express.static("public"));
+// admin debug api
+app.get("/api/debug", (req, res) => {
+    res.json(activeGame.getGameStateSnapshot());
+});
+////////////
 const activeGame = new UnoGame_1.UnoGame();
 // connection
 io.on("connection", (socket) => {
@@ -25,6 +30,7 @@ io.on("connection", (socket) => {
         activeGame.setTableCard(cardData);
         io.emit("updateGameState", activeGame.getGameState());
         for (const affectedPlayer of result.affectedPlayers) {
+            // TODO: update affected player gamestate
         }
         console.log(`Player ${socket.id} played card ${cardData.color} ${cardData.value}`);
     });

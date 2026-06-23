@@ -13,6 +13,12 @@ const io = new Server(server);
 const PORT = 3000;
 app.use(express.static("public"));
 
+// admin debug api
+app.get("/api/debug", (req, res) => {
+    res.json(activeGame.getGameStateSnapshot());
+});
+////////////
+
 const activeGame = new UnoGame();
 
 // connection

@@ -62,7 +62,7 @@ class UnoGame {
         if (cardData === undefined) {
             steps = 1;
         }
-        else if (cardData.value === "skip" || "+2" || "+4") {
+        else if (cardData.value === "skip" || cardData.value === "+2" || cardData.value === "+4") {
             steps = 2;
         }
         else if (cardData.value === "reverse" && this.turnOrder.length == 2) {
@@ -73,7 +73,8 @@ class UnoGame {
             this.reverseTurnDirection();
             steps = 1;
         }
-        return ((index + this.turnDirection * steps) % this.turnOrder.length + this.turnOrder.length) % this.turnOrder.length;
+        console.log(steps);
+        return (index + this.turnDirection * steps + this.turnOrder.length) % this.turnOrder.length;
     }
     handleTurnIndexOnDisconnection(socketID) {
         const index = this.turnOrder.indexOf(socketID);
@@ -156,16 +157,15 @@ class UnoGame {
         this.tableCard = cardData;
         affectedPlayers.push({ socketID: socketID, action: "play card" });
         // check for penalty cards
-        const punnishPlayerID = this.turnOrder[this.getNextPlayerIndex(this.currentTurnIndex)];
-        if (cardData.value == "+2") {
-            this.totalPenalty += 2;
-        }
-        else if (cardData.value == "+4") {
-            this.totalPenalty += 4;
-        }
-        this.forceDrawCard(punnishPlayerID, this.totalPenalty);
-        affectedPlayers.push({ socketID: punnishPlayerID, action: `draw ${this.totalPenalty} cards` });
-        this.totalPenalty = 0; // reset total penalty
+        // const punnishPlayerID: string = this.turnOrder[ this.getNextPlayerIndex( this.currentTurnIndex ) ]!;
+        // if( cardData.value == "+2" ){
+        //     this.totalPenalty += 2;
+        // }else if ( cardData.value == "+4" ){
+        //     this.totalPenalty += 4;
+        // }
+        // this.forceDrawCard( punnishPlayerID, this.totalPenalty );
+        // affectedPlayers.push( {socketID: punnishPlayerID, action: `draw ${this.totalPenalty} cards`} );
+        // this.totalPenalty = 0; // reset total penalty
         // pass turn to next player
         this.currentTurnIndex = this.getNextPlayerIndex(this.currentTurnIndex, cardData);
         return { success: true, affectedPlayers };
@@ -195,6 +195,17 @@ class UnoGame {
             this.players[socketID].push(drawnCard);
         }
         return { success: true, cardData: drawnCard };
+    }
+    // debug
+    getGameStateSnapshot() {
+        return {
+            turnOrder: this.turnOrder,
+            currentPlayerIndex: this.currentTurnIndex,
+            playDirection: this.turnDirection,
+            tableCard: this.tableCard,
+            deckSize: this.deck.length,
+            players: this.players
+        };
     }
 }
 exports.UnoGame = UnoGame;

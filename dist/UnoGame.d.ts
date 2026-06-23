@@ -40,5 +40,13 @@ export declare class UnoGame {
         reason?: string;
         cardData?: Card;
     };
+    getGameStateSnapshot(): {
+        turnOrder: string[];
+        currentPlayerIndex: number;
+        playDirection: 1 | -1;
+        tableCard: Card | undefined;
+        deckSize: number;
+        players: Record<string, Card[]>;
+    };
 }
 //# sourceMappingURL=UnoGame.d.ts.map
