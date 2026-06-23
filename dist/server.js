@@ -14,7 +14,7 @@ const activeGame = new UnoGame_1.UnoGame();
 io.on("connection", (socket) => {
     console.log(`A user has connected to the server. Socket ID: ${socket.id}`);
     const startingHand = activeGame.addPlayerAndDealCards(socket.id);
-    socket.emit("yourHand", startingHand);
+    socket.emit("updateHand", startingHand);
     socket.emit("updateGameState", activeGame.getGameState());
     socket.on("playCardRequest", (cardData) => {
         const result = activeGame.tryPlayCard(socket.id, cardData);
@@ -24,10 +24,12 @@ io.on("connection", (socket) => {
         }
         activeGame.setTableCard(cardData);
         io.emit("updateGameState", activeGame.getGameState());
+        for (const affectedPlayer of result.affectedPlayers) {
+        }
         console.log(`Player ${socket.id} played card ${cardData.color} ${cardData.value}`);
     });
     socket.on("drawCardRequest", () => {
-        const result = activeGame.drawCard(socket.id);
+        const result = activeGame.tryDrawCard(socket.id);
         if (!result.success) {
             console.log(`Invalid draw card by ${socket.id} . Reason: ${result.reason}`);
             return;

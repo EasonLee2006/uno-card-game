@@ -28,6 +28,9 @@ export class UnoGame {
         return { tableCard: this.getTableCard(), activePlayerID: this.getActivePlayerID() };
     }
 
+    private totalPenalty = 0;
+    public getTotalPenalty(){ return this.totalPenalty; }
+
 
     // ********** constructor **********
 
@@ -71,7 +74,7 @@ export class UnoGame {
         // special rules
         if( cardData === undefined ){
             steps = 1;
-        }else if( cardData.value === "skip" ){
+        }else if( cardData.value === "skip" || "+2" || "+4" ){
             steps = 2;
         }
         else if( cardData.value === "reverse" && this.turnOrder.length == 2 ){
@@ -148,44 +151,72 @@ export class UnoGame {
         console.log(this.turnOrder);
     }
 
-    public tryPlayCard( socketID: string, cardData: Card ): { success: boolean, reason?: string }{
-        
+    public tryPlayCard( socketID: string, cardData: Card ): { success: boolean, reason?: string, affectedPlayers: {socketID: string, action: string}[] }{
+        let affectedPlayers: {socketID: string, action: string}[] = [];
+
         // turn-based
         const activePlayerID: string | undefined = this.getActivePlayerID();
         if( socketID !== activePlayerID ){
-            return { success: false, reason: "It is not your turn!" };
+            return { success: false, reason: "It is not your turn!", affectedPlayers };
         }
 
         // check if the player exists
         const playerHand = this.players[socketID];
         if( !playerHand ){
-            return { success: false, reason: "player not found"};
+            return { success: false, reason: "player not found", affectedPlayers};
         }
         
         // check if player is cheating
         const cardIndex = playerHand.findIndex( c => c.color == cardData.color && c.value == cardData.value )
         if( cardIndex < 0 ){
-            return { success: false, reason: "cannot find card in hand"};
+            affectedPlayers.push( {socketID: socketID, action: "cheating"} );
+            return { success: false, reason: "cannot find card in hand", affectedPlayers};
         }
 
         // check if it's legal to play card
         if( this.tableCard != undefined){
             const isValid: boolean = cardData.color == this.tableCard.color || cardData.value == this.tableCard.value;
-            if ( !isValid ) return { success: false, reason: "card doesn't match" };
+            if ( !isValid ) return { success: false, reason: "card doesn't match", affectedPlayers };
         }
 
         // *** play card ***
         // remove card from player (server side)
         playerHand.splice( cardIndex, 1 );
         this.tableCard = cardData;
+        affectedPlayers.push( {socketID: socketID, action: "play card"} );
+
+        // check for penalty cards
+        const punnishPlayerID: string = this.turnOrder[ this.getNextPlayerIndex( this.currentTurnIndex ) ]!;
+        if( cardData.value == "+2" ){
+            this.totalPenalty += 2;
+        }else if ( cardData.value == "+4" ){
+            this.totalPenalty += 4;
+        }
+        this.forceDrawCard( punnishPlayerID, this.totalPenalty );
+        affectedPlayers.push( {socketID: punnishPlayerID, action: `draw ${this.totalPenalty} cards`} );
+
+        this.totalPenalty = 0; // reset total penalty
 
         // pass turn to next player
         this.currentTurnIndex = this.getNextPlayerIndex( this.currentTurnIndex, cardData );
         
-        return {success: true};
+        return {success: true, affectedPlayers};
     }
 
-    public drawCard( socketID: string ): {success: boolean, reason?: string, cardData?: Card}{
+    public forceDrawCard( socketID: string, num: number ): {success: boolean, reason?: string, cards: Card[]}{
+        let drawnCards: Card[] = [];
+        
+        // make sure deck isnt empty
+        if ( this.deck.length < num ) return {success: false, reason: "not enough cards in deck", cards: drawnCards};
+
+        for( let i=0 ; i<num ; i++ ){
+            drawnCards.push( this.deck.pop()! );
+            this.players[socketID]?.push( drawnCards[i]! );
+        }
+        return {success: true, cards: drawnCards};
+    }
+
+    public tryDrawCard( socketID: string ): {success: boolean, reason?: string, cardData?: Card}{
         const activePlayerID: string | undefined = this.turnOrder[ this.currentTurnIndex ];
         
         // turn-based

@@ -77,8 +77,8 @@ socket.on("connect", () => {
   console.log(`my socket id: ${socket.id}`); // Example: "ojIckSD2jqNzOqIrAGzL"
 });
 
-socket.on("yourHand", (dealtCards)=>{
-    console.log("got dealt cards from server: ", dealtCards);
+socket.on("updateHand", (dealtCards)=>{
+    console.log("your hand is: ", dealtCards);
     myHand = dealtCards;
 
     renderHand();

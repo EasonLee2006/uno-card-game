@@ -20,11 +20,11 @@ io.on( "connection", (socket: Socket)=>{
     console.log(`A user has connected to the server. Socket ID: ${socket.id}`);
 
     const startingHand = activeGame.addPlayerAndDealCards( socket.id );
-    socket.emit("yourHand", startingHand)
+    socket.emit("updateHand", startingHand);
     socket.emit( "updateGameState", activeGame.getGameState() );
 
     socket.on( "playCardRequest", ( cardData: Card )=>{   
-        const result: {success: boolean, reason?: string} = activeGame.tryPlayCard( socket.id, cardData );
+        const result: {success: boolean, reason?: string, affectedPlayers: {socketID: string, action: string}[]} = activeGame.tryPlayCard( socket.id, cardData );
         if( !result.success ){
             console.log(`Invalid card play by ${socket.id} . Reason: ${result.reason}`);
             return;
@@ -33,13 +33,17 @@ io.on( "connection", (socket: Socket)=>{
         activeGame.setTableCard( cardData );
 
         io.emit("updateGameState", activeGame.getGameState());
+
+        for( const affectedPlayer of result.affectedPlayers ){
+            // TODO: update affected player gamestate
+        }
         
         console.log(`Player ${socket.id} played card ${cardData.color} ${cardData.value}`);
 
     } );
 
     socket.on( "drawCardRequest", ()=>{
-        const result: {success: boolean, reason?: string, cardData?: Card} = activeGame.drawCard( socket.id );
+        const result: {success: boolean, reason?: string, cardData?: Card} = activeGame.tryDrawCard( socket.id );
         if( !result.success ){
             console.log(`Invalid draw card by ${socket.id} . Reason: ${result.reason}`);
             return;

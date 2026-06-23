@@ -12,6 +12,8 @@ export declare class UnoGame {
     private turnDirection;
     getActivePlayerID(): string | undefined;
     getGameState(): Gamestate;
+    private totalPenalty;
+    getTotalPenalty(): number;
     constructor();
     private buildDeck;
     private shuffle;
@@ -23,8 +25,17 @@ export declare class UnoGame {
     tryPlayCard(socketID: string, cardData: Card): {
         success: boolean;
         reason?: string;
+        affectedPlayers: {
+            socketID: string;
+            action: string;
+        }[];
     };
-    drawCard(socketID: string): {
+    forceDrawCard(socketID: string, num: number): {
+        success: boolean;
+        reason?: string;
+        cards: Card[];
+    };
+    tryDrawCard(socketID: string): {
         success: boolean;
         reason?: string;
         cardData?: Card;

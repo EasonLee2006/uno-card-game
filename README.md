@@ -2,7 +2,7 @@
 
 ### goal
 Trying to make a working online UNO card game. \
-disclaimer: this is not official UNO, it's just a project for myself.
+disclaimer: this is not official UNO, it's just a fun project for myself.
 
 ## How to run locally
 
