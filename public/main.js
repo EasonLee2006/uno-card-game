@@ -1,4 +1,6 @@
-const socket = io();
+const socket = io({
+    reconnectionAttempts: 10
+});
 
 let myHand = [];
 let myTurn = false;

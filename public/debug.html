@@ -70,7 +70,7 @@
 </head>
 <body>
 
-    <h1>🖥️ Server Status Visualizer</h1>
+    <h1>🖥️ Server Status</h1>
     <div id="connection-status" class="stat-row">Connecting to server...</div>
 
     <div class="grid">
@@ -108,6 +108,8 @@
             return `<div class="card ${card.color}">${card.value}</div>`;
         }
 
+        let failCount = 0; // NEW: Track consecutive failures
+
         // Main function to fetch data and update the screen
         async function fetchServerState() {
             try {
@@ -117,6 +119,8 @@
                 const state = await response.json();
                 connectionStatus.innerHTML = "🟢 Connected & Syncing (updates every 1s)";
                 connectionStatus.style.color = "#4caf50";
+                
+                failCount = 0; // Reset fail count on success!
 
                 // Update Table Data
                 document.getElementById('deck-size').innerText = state.deckSize;
@@ -156,15 +160,27 @@
                 });
 
             } catch (error) {
-                connectionStatus.innerHTML = "🔴 Lost connection to server. Is Node running?";
+                failCount++;
+                connectionStatus.innerHTML = `🔴 Lost connection to server. (Failed ${failCount} times)`;
                 connectionStatus.style.color = "#f44336";
-                console.error(error);
+                
+                // Only log the actual error the first few times to save RAM!
+                if (failCount <= 3) console.error("Server fetch failed:", error);
+            }
+
+            // --- THE MEMORY SAVER ---
+            // If it fails more than 10 times (10 seconds), stop asking entirely.
+            if (failCount > 10) {
+                connectionStatus.innerHTML = "🔴 Server dead. Polling stopped to save memory. Refresh to reconnect.";
+            } else {
+                // If failing, wait a little longer each time (Backoff). If succeeding, wait 1s.
+                const nextDelay = failCount === 0 ? 1000 : 1000 * failCount;
+                setTimeout(fetchServerState, nextDelay);
             }
         }
 
-        // Fetch immediately, then poll every 1000 milliseconds (1 second)
+        // Kick off the loop (removed setInterval)
         fetchServerState();
-        setInterval(fetchServerState, 1000);
     </script>
 </body>
 </html>
