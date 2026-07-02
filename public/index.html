@@ -3,33 +3,61 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-    <link rel="stylesheet", href="./style.css">
-    <title>Uno</title>
+    <title>UNO</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div id="game-container">
-        <div id="opponents-area">
-            <div class="opponent">player 1</div>
-            <div class="opponent">player 2</div>
+    <!-- 1. MAIN MENU SCREEN -->
+    <div id="main-screen" class="screen">
+        <h1>Welcome to UNO</h1>
+        <div class="menu-box">
+            <input type="text" id="player-name-input" placeholder="Enter your name">
+            <input type="text" id="room-code-input" placeholder="4-Digit Room Code (e.g. ABCD)">
+            <button id="join-room-btn">Join / Create Room</button>
         </div>
+    </div>
 
-        <div id="table-area">
-            <div id="discard-pile"></div>
+    <!-- 2. LOBBY SCREEN -->
+    <div id="lobby-screen" class="screen hidden">
+        <h2>Room Code: <span id="display-room-code"></span></h2>
+        <div class="lobby-layout">
+            <div class="roster">
+                <h3>Players</h3>
+                <ul id="lobby-player-list"></ul>
+            </div>
+            <div class="settings">
+                <h3>Custom Rules</h3>
+                <!-- We will wire these checkboxes up later -->
+                <label><input type="checkbox" id="rule-stack"> Stack +2</label><br>
+                <label><input type="checkbox" id="rule-bots"> Add Bots</label>
+            </div>
         </div>
+        <button id="start-game-btn" class="hidden">Start Game (Host Only)</button>
+    </div>
 
-        <div id="player-hand">
-
-        </div>
-
-        <div id="controls">
-            <button id = "draw-card-button">DRAW CARD</button>
-            <button id="uno-button">UNO!</button>
+    <!-- 3. GAME SCREEN (Balatro Style) -->
+    <div id="game-screen" class="screen hidden">
+        <div id="opponents-top">
+            <!-- Backs of cards will go here -->
         </div>
         
+        <div id="table-center">
+            <div id="discard-pile" class="card"></div>
+        </div>
+        
+        <div id="player-hand-bottom">
+            <!-- Player's actual cards go here -->
+        </div>
+        
+        <div id="action-buttons">
+            <button id="btn-draw">Draw Card</button>
+            <button id="btn-uno">UNO!</button>
+            <button id="btn-sort">Sort Hand</button>
+            <button id="btn-play">Play Selected</button>
+        </div>
     </div>
-    
+
     <script src="/socket.io/socket.io.js"></script>
-    <script src="./main.js"></script>
+    <script src="script.js"></script>
 </body>
 </html>

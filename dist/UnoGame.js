@@ -3,28 +3,28 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.UnoGame = void 0;
 class UnoGame {
     // ********** variables **********
+    players = {};
+    state = "LOBBY";
+    rules;
     deck = [];
     tableCard = undefined;
-    getTableCard() { return this.tableCard; }
-    ;
-    setTableCard(cardData) { this.tableCard = cardData; }
-    ;
-    players = {};
-    getPlayers() { return this.players; }
-    ;
     setPlayerHand(socketID, cards) {
+        if (!this.players[socketID]) {
+            console.log("player not found");
+            return;
+        }
         // will not remove cards from drawing pile
-        this.players[socketID] = cards;
+        this.players[socketID].hand = cards;
         return;
     }
     turnOrder = [];
-    currentTurnIndex = 0;
+    currentPlayerIndex = 0;
     turnDirection = 1;
     getActivePlayerID() {
-        return this.turnOrder[this.currentTurnIndex];
+        return this.turnOrder[this.currentPlayerIndex];
     }
     getGameState() {
-        return { tableCard: this.getTableCard(), activePlayerID: this.getActivePlayerID() };
+        return { tableCard: this.tableCard, activePlayerID: this.getActivePlayerID() };
     }
     totalPenalty = 0;
     getTotalPenalty() { return this.totalPenalty; }
@@ -32,6 +32,11 @@ class UnoGame {
     constructor() {
         this.deck = this.buildDeck();
         this.shuffle(this.deck);
+        this.rules = {
+            stackDrawTwo: false,
+            playMultipleMatches: false,
+            addBots: false
+        };
     }
     // ********** private functions **********
     buildDeck() {
@@ -73,17 +78,16 @@ class UnoGame {
             this.reverseTurnDirection();
             steps = 1;
         }
-        console.log(steps);
         return (index + this.turnDirection * steps + this.turnOrder.length) % this.turnOrder.length;
     }
     handleTurnIndexOnDisconnection(socketID) {
         const index = this.turnOrder.indexOf(socketID);
         if (index <= -1) {
             console.log("cannot find player to disconnect");
-            return this.currentTurnIndex;
+            return this.currentPlayerIndex;
         }
-        if (index != this.currentTurnIndex) { // disconnected player isn't active
-            let result = this.currentTurnIndex;
+        if (index != this.currentPlayerIndex) { // disconnected player isn't active
+            let result = this.currentPlayerIndex;
             if (index < result) {
                 result--;
             }
@@ -92,7 +96,7 @@ class UnoGame {
         }
         else { // disconnected player is active
             // pass to the next player, also prevents negative modulation
-            let result = this.getNextPlayerIndex(this.currentTurnIndex);
+            let result = this.getNextPlayerIndex(this.currentPlayerIndex);
             this.turnOrder.splice(index, 1);
             if (this.turnOrder.length <= 0)
                 return 0; // no players left
@@ -107,25 +111,42 @@ class UnoGame {
         this.turnDirection *= -1;
     }
     // ********** public functions **********
-    addPlayerAndDealCards(socketID) {
-        const startingHand = [];
-        for (let i = 0; i < 7; i++) {
-            if (this.deck.length <= 0) {
-                console.log("deck is empty, cannot draw cards");
-            }
-            else
-                startingHand.push(this.deck.pop());
-        }
-        this.players[socketID] = startingHand;
-        this.turnOrder.push(socketID);
-        console.log(this.turnOrder);
-        console.log(`active player id: ${this.getActivePlayerID()}`);
-        return startingHand;
+    addPlayer(socketId, playerName) {
+        const isFirstPlayer = this.turnOrder.length === 0;
+        this.players[socketId] = {
+            id: socketId,
+            name: playerName,
+            hand: [],
+            isHost: isFirstPlayer // The creator of the room is the host
+        };
+        this.turnOrder.push(socketId);
     }
-    removePlayer(socketID) {
-        delete this.players[socketID];
-        this.currentTurnIndex = this.handleTurnIndexOnDisconnection(socketID);
-        console.log(this.turnOrder);
+    getLobbyData() {
+        // gets the data of the lobby
+        return {
+            players: Object.values(this.players).map(p => ({
+                id: p.id,
+                name: p.name,
+                isHost: p.isHost
+            })),
+            rules: this.rules
+        };
+    }
+    removePlayer(socketId) {
+        // 1. Check if they were the host before we delete them
+        const wasHost = this.players[socketId]?.isHost;
+        // 2. Remove them from the player dictionary
+        delete this.players[socketId];
+        // 3. Remove them from the turn ring
+        this.currentPlayerIndex = this.handleTurnIndexOnDisconnection(socketId);
+        // --- NEW: HOST MIGRATION ---
+        // If the old host left, and there is still at least one person in the room...
+        if (wasHost && this.turnOrder.length > 0) {
+            // Give the crown to the first person in the array
+            const newHostId = this.turnOrder[0];
+            this.players[newHostId].isHost = true;
+            console.log(`Host migrated to player: ${this.players[newHostId].name}`);
+        }
     }
     tryPlayCard(socketID, cardData) {
         let affectedPlayers = [];
@@ -135,7 +156,7 @@ class UnoGame {
             return { success: false, reason: "It is not your turn!", affectedPlayers };
         }
         // check if the player exists
-        const playerHand = this.players[socketID];
+        const playerHand = this.players[socketID]?.hand;
         if (!playerHand) {
             return { success: false, reason: "player not found", affectedPlayers };
         }
@@ -157,7 +178,7 @@ class UnoGame {
         this.tableCard = cardData;
         affectedPlayers.push({ socketID: socketID, action: "play card" });
         // check for penalty cards
-        // const punnishPlayerID: string = this.turnOrder[ this.getNextPlayerIndex( this.currentTurnIndex ) ]!;
+        // const punnishPlayerID: string = this.turnOrder[ this.getNextPlayerIndex( this.currentPlayerIndex ) ]!;
         // if( cardData.value == "+2" ){
         //     this.totalPenalty += 2;
         // }else if ( cardData.value == "+4" ){
@@ -167,7 +188,7 @@ class UnoGame {
         // affectedPlayers.push( {socketID: punnishPlayerID, action: `draw ${this.totalPenalty} cards`} );
         // this.totalPenalty = 0; // reset total penalty
         // pass turn to next player
-        this.currentTurnIndex = this.getNextPlayerIndex(this.currentTurnIndex, cardData);
+        this.currentPlayerIndex = this.getNextPlayerIndex(this.currentPlayerIndex, cardData);
         return { success: true, affectedPlayers };
     }
     forceDrawCard(socketID, num) {
@@ -177,12 +198,12 @@ class UnoGame {
             return { success: false, reason: "not enough cards in deck", cards: drawnCards };
         for (let i = 0; i < num; i++) {
             drawnCards.push(this.deck.pop());
-            this.players[socketID]?.push(drawnCards[i]);
+            this.players[socketID]?.hand.push(drawnCards[i]);
         }
         return { success: true, cards: drawnCards };
     }
     tryDrawCard(socketID) {
-        const activePlayerID = this.turnOrder[this.currentTurnIndex];
+        const activePlayerID = this.turnOrder[this.currentPlayerIndex];
         // turn-based
         if (socketID !== activePlayerID)
             return { success: false, reason: "It is not your turn!" };
@@ -192,7 +213,7 @@ class UnoGame {
         // (success)
         const drawnCard = this.deck.pop();
         if (this.players[socketID]) {
-            this.players[socketID].push(drawnCard);
+            this.players[socketID].hand.push(drawnCard);
         }
         return { success: true, cardData: drawnCard };
     }
@@ -200,7 +221,7 @@ class UnoGame {
     getGameStateSnapshot() {
         return {
             turnOrder: this.turnOrder,
-            currentPlayerIndex: this.currentTurnIndex,
+            currentPlayerIndex: this.currentPlayerIndex,
             playDirection: this.turnDirection,
             tableCard: this.tableCard,
             deckSize: this.deck.length,

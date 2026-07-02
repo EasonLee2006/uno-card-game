@@ -1,15 +1,14 @@
-import { Card, Gamestate } from "./types";
+import { Card, Gamestate, Player, GameRules } from "./types";
 export declare class UnoGame {
+    players: Record<string, Player>;
+    state: "LOBBY" | "PLAYING" | "FINISHED";
+    rules: GameRules;
     private deck;
-    private tableCard;
-    getTableCard(): Card | undefined;
-    setTableCard(cardData: Card): void;
-    private players;
-    getPlayers(): Record<string, Card[]>;
+    tableCard: Card | undefined;
     setPlayerHand(socketID: string, cards: Card[]): void;
-    private turnOrder;
-    private currentTurnIndex;
-    private turnDirection;
+    turnOrder: string[];
+    currentPlayerIndex: number;
+    turnDirection: 1 | -1;
     getActivePlayerID(): string | undefined;
     getGameState(): Gamestate;
     private totalPenalty;
@@ -20,8 +19,16 @@ export declare class UnoGame {
     private getNextPlayerIndex;
     private handleTurnIndexOnDisconnection;
     private reverseTurnDirection;
-    addPlayerAndDealCards(socketID: string): Card[];
-    removePlayer(socketID: string): void;
+    addPlayer(socketId: string, playerName: string): void;
+    getLobbyData(): {
+        players: {
+            id: string;
+            name: string;
+            isHost: boolean;
+        }[];
+        rules: GameRules;
+    };
+    removePlayer(socketId: string): void;
     tryPlayCard(socketID: string, cardData: Card): {
         success: boolean;
         reason?: string;
@@ -46,7 +53,7 @@ export declare class UnoGame {
         playDirection: 1 | -1;
         tableCard: Card | undefined;
         deckSize: number;
-        players: Record<string, Card[]>;
+        players: Record<string, Player>;
     };
 }
 //# sourceMappingURL=UnoGame.d.ts.map

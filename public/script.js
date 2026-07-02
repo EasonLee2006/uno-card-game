@@ -2,6 +2,57 @@ const socket = io({
     reconnectionAttempts: 10
 });
 
+// --- UI Elements ---
+const screens = {
+    main: document.getElementById('main-screen'),
+    lobby: document.getElementById('lobby-screen'),
+    game: document.getElementById('game-screen')
+};
+
+// UI Switching Function
+function showScreen(screenName) {
+    // Hide all screens
+    Object.values(screens).forEach(screen => screen.classList.add('hidden'));
+    // Show the requested screen
+    screens[screenName].classList.remove('hidden');
+}
+
+// --- Main Menu Logic ---
+document.getElementById('join-room-btn').addEventListener('click', () => {
+    const name = document.getElementById('player-name-input').value.trim();
+    const roomCode = document.getElementById('room-code-input').value.trim().toUpperCase();
+
+    if (!name || !roomCode) {
+        alert("Please enter both a name and a room code!");
+        return;
+    }
+
+    // 1. Tell server we want to join
+    socket.emit('joinRoom', { name, roomCode });
+    
+    // 2. Update UI to show we are in the lobby
+    document.getElementById('display-room-code').innerText = roomCode;
+    showScreen('lobby');
+});
+
+// --- Lobby Logic ---
+socket.on('lobbyUpdated', (lobbyData) => {
+    const playerList = document.getElementById('lobby-player-list');
+    playerList.innerHTML = ''; // Clear old list
+
+    // Populate the roster
+    lobbyData.players.forEach(player => {
+        const li = document.createElement('li');
+        li.innerText = player.name + (player.isHost ? " 👑 (Host)" : "");
+        playerList.appendChild(li);
+
+        // If I am the host, show the "Start Game" button!
+        if (player.id === socket.id && player.isHost) {
+            document.getElementById('start-game-btn').classList.remove('hidden');
+        }
+    });
+});
+
 let myHand = [];
 let myTurn = false;
 
@@ -129,7 +180,7 @@ socket.on( "updateGameState", (gameState)=>{
 
 
 // draw card
-const drawCardButton = document.getElementById("draw-card-button");
+const drawCardButton = document.getElementById("btn-draw");
 drawCardButton.addEventListener( "click", () => {
     if( !myTurn ){
         console.log("not your turn");

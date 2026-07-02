@@ -1,31 +1,35 @@
-import { Card, CardColor, Gamestate } from "./types"
+import { Card, CardColor, Gamestate, Player, GameRules } from "./types"
 
 export class UnoGame {
     // ********** variables **********
+    public players: Record<string, Player> = {};
+    public state: "LOBBY" | "PLAYING" | "FINISHED" = "LOBBY";
+    public rules: GameRules;
+
     private deck: Card[] = [];
+    public tableCard: Card | undefined = undefined;
 
-    private tableCard: Card | undefined = undefined;
-    public getTableCard() :Card | undefined { return this.tableCard; };
-    public setTableCard( cardData: Card ){ this.tableCard = cardData };
 
-    private players: Record<string, Card[]> = {};
-    public getPlayers() { return this.players; };
     public setPlayerHand( socketID: string, cards: Card[] ): void{
+        if( !this.players[socketID] ){
+            console.log("player not found");
+            return;
+        }
         // will not remove cards from drawing pile
-        this.players[socketID] = cards;
+        this.players[socketID].hand = cards;
         return;
     }
 
-    private turnOrder: string[] = [];
-    private currentTurnIndex: number = 0;
-    private turnDirection: 1|-1 = 1;
+    public turnOrder: string[] = [];
+    public currentPlayerIndex: number = 0;
+    public turnDirection: 1|-1 = 1;
 
     public getActivePlayerID(): string | undefined{
-        return this.turnOrder[this.currentTurnIndex];
+        return this.turnOrder[this.currentPlayerIndex];
     }
 
     public getGameState(): Gamestate{
-        return { tableCard: this.getTableCard(), activePlayerID: this.getActivePlayerID() };
+        return { tableCard: this.tableCard, activePlayerID: this.getActivePlayerID() };
     }
 
     private totalPenalty = 0;
@@ -37,6 +41,12 @@ export class UnoGame {
     constructor() {
         this.deck = this.buildDeck();
         this.shuffle(this.deck);
+        
+        this.rules = {
+            stackDrawTwo: false,
+            playMultipleMatches: false,
+            addBots: false
+        };
     }
 
     // ********** private functions **********
@@ -93,10 +103,10 @@ export class UnoGame {
         const index = this.turnOrder.indexOf( socketID );
         if( index <= -1 ){
             console.log("cannot find player to disconnect");
-            return this.currentTurnIndex;
+            return this.currentPlayerIndex;
         }
-        if( index != this.currentTurnIndex ){ // disconnected player isn't active
-            let result = this.currentTurnIndex;
+        if( index != this.currentPlayerIndex ){ // disconnected player isn't active
+            let result = this.currentPlayerIndex;
             if( index < result ){
                 result--;
             }
@@ -106,7 +116,7 @@ export class UnoGame {
         else{ // disconnected player is active
 
             // pass to the next player, also prevents negative modulation
-            let result: number = this.getNextPlayerIndex( this.currentTurnIndex );
+            let result: number = this.getNextPlayerIndex( this.currentPlayerIndex );
             
             this.turnOrder.splice(index, 1);
             if( this.turnOrder.length <= 0 ) return 0; // no players left
@@ -128,28 +138,53 @@ export class UnoGame {
 
     // ********** public functions **********
 
-    public addPlayerAndDealCards(socketID: string): Card[] {
-        const startingHand: Card[] = [];
-        for (let i = 0; i < 7; i++) {
-            if (this.deck.length <= 0) {
-                console.log("deck is empty, cannot draw cards");
-            }
-            else startingHand.push(this.deck.pop()!);
+    public addPlayer(socketId: string, playerName: string): void {
+        const isFirstPlayer = this.turnOrder.length === 0;
+
+        this.players[socketId] = {
+            id: socketId,
+            name: playerName,
+            hand: [],
+            isHost: isFirstPlayer // The creator of the room is the host
+        };
+        
+        this.turnOrder.push(socketId);
+    }
+
+    public getLobbyData() {
+        // gets the data of the lobby
+        return {
+            players: Object.values(this.players).map(p => ({
+                id: p.id,
+                name: p.name,
+                isHost: p.isHost
+            })),
+            rules: this.rules
+        };
+    }
+
+    public removePlayer( socketId: string ): void{
+        // 1. Check if they were the host before we delete them
+        const wasHost = this.players[socketId]?.isHost;
+        
+        // 2. Remove them from the player dictionary
+        delete this.players[socketId];
+        
+        // 3. Remove them from the turn ring
+        this.currentPlayerIndex = this.handleTurnIndexOnDisconnection( socketId );
+
+
+        // --- NEW: HOST MIGRATION ---
+        // If the old host left, and there is still at least one person in the room...
+        if (wasHost && this.turnOrder.length > 0) {
+            // Give the crown to the first person in the array
+            const newHostId: string = this.turnOrder[0]!;
+            this.players[newHostId]!.isHost = true;
+            console.log(`Host migrated to player: ${this.players[newHostId]!.name}`);
         }
-
-        this.players[socketID] = startingHand;
-        this.turnOrder.push(socketID);
-
-        console.log(this.turnOrder);
-        console.log(`active player id: ${this.getActivePlayerID()}`);
-        return startingHand;
     }
 
-    public removePlayer( socketID: string ): void{
-        delete this.players[socketID];
-        this.currentTurnIndex = this.handleTurnIndexOnDisconnection( socketID );
-        console.log(this.turnOrder);
-    }
+    
 
     public tryPlayCard( socketID: string, cardData: Card ): { success: boolean, reason?: string, affectedPlayers: {socketID: string, action: string}[] }{
         let affectedPlayers: {socketID: string, action: string}[] = [];
@@ -161,7 +196,7 @@ export class UnoGame {
         }
 
         // check if the player exists
-        const playerHand = this.players[socketID];
+        const playerHand = this.players[socketID]?.hand;
         if( !playerHand ){
             return { success: false, reason: "player not found", affectedPlayers};
         }
@@ -186,7 +221,7 @@ export class UnoGame {
         affectedPlayers.push( {socketID: socketID, action: "play card"} );
 
         // check for penalty cards
-        // const punnishPlayerID: string = this.turnOrder[ this.getNextPlayerIndex( this.currentTurnIndex ) ]!;
+        // const punnishPlayerID: string = this.turnOrder[ this.getNextPlayerIndex( this.currentPlayerIndex ) ]!;
         // if( cardData.value == "+2" ){
         //     this.totalPenalty += 2;
         // }else if ( cardData.value == "+4" ){
@@ -198,7 +233,7 @@ export class UnoGame {
         // this.totalPenalty = 0; // reset total penalty
 
         // pass turn to next player
-        this.currentTurnIndex = this.getNextPlayerIndex( this.currentTurnIndex, cardData );
+        this.currentPlayerIndex = this.getNextPlayerIndex( this.currentPlayerIndex, cardData );
         
         return {success: true, affectedPlayers};
     }
@@ -211,13 +246,13 @@ export class UnoGame {
 
         for( let i=0 ; i<num ; i++ ){
             drawnCards.push( this.deck.pop()! );
-            this.players[socketID]?.push( drawnCards[i]! );
+            this.players[socketID]?.hand.push( drawnCards[i]! );
         }
         return {success: true, cards: drawnCards};
     }
 
     public tryDrawCard( socketID: string ): {success: boolean, reason?: string, cardData?: Card}{
-        const activePlayerID: string | undefined = this.turnOrder[ this.currentTurnIndex ];
+        const activePlayerID: string | undefined = this.turnOrder[ this.currentPlayerIndex ];
         
         // turn-based
         if( socketID !== activePlayerID ) return { success: false, reason: "It is not your turn!" };
@@ -228,7 +263,7 @@ export class UnoGame {
         // (success)
         const drawnCard = this.deck.pop()!;
         if( this.players[socketID] ){
-            this.players[ socketID ].push( drawnCard );
+            this.players[ socketID ].hand.push( drawnCard );
         }
         return {success: true, cardData: drawnCard};
     }
@@ -237,7 +272,7 @@ export class UnoGame {
     public getGameStateSnapshot() {
         return {
             turnOrder: this.turnOrder,
-            currentPlayerIndex: this.currentTurnIndex,
+            currentPlayerIndex: this.currentPlayerIndex,
             playDirection: this.turnDirection,
             tableCard: this.tableCard,
             deckSize: this.deck.length, 

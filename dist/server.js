@@ -1,54 +1,63 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
-const express = require("express");
-const http = require("http");
+// src/server.ts
+const express_1 = __importDefault(require("express"));
+const http_1 = __importDefault(require("http"));
 const socket_io_1 = require("socket.io");
 const UnoGame_1 = require("./UnoGame");
-const app = express();
-const server = http.createServer(app);
+const app = (0, express_1.default)();
+const server = http_1.default.createServer(app);
 const io = new socket_io_1.Server(server);
 const PORT = 3000;
-app.use(express.static("public"));
-// admin debug api
-app.get("/api/debug", (req, res) => {
-    res.json(activeGame.getGameStateSnapshot());
-});
-////////////
-const activeGame = new UnoGame_1.UnoGame();
-// connection
+app.use(express_1.default.static("public"));
+// NEW: The Room Manager. A dictionary of active games.
+const activeRooms = new Map();
 io.on("connection", (socket) => {
-    console.log(`A user has connected to the server. Socket ID: ${socket.id}`);
-    const startingHand = activeGame.addPlayerAndDealCards(socket.id);
-    socket.emit("updateHand", startingHand);
-    socket.emit("updateGameState", activeGame.getGameState());
-    socket.on("playCardRequest", (cardData) => {
-        const result = activeGame.tryPlayCard(socket.id, cardData);
-        if (!result.success) {
-            console.log(`Invalid card play by ${socket.id} . Reason: ${result.reason}`);
-            return;
+    console.log(`User connected. Socket ID: ${socket.id}`);
+    // --- STEP 1: Joining a Lobby ---
+    socket.on("joinRoom", (data) => {
+        const roomCode = data.roomCode.toUpperCase();
+        // 1. Check if room exists. If not, create it.
+        let game = activeRooms.get(roomCode);
+        if (!game) {
+            game = new UnoGame_1.UnoGame();
+            activeRooms.set(roomCode, game);
+            console.log(`Room ${roomCode} created!`);
         }
-        activeGame.setTableCard(cardData);
-        io.emit("updateGameState", activeGame.getGameState());
-        for (const affectedPlayer of result.affectedPlayers) {
-            // TODO: update affected player gamestate
-        }
-        console.log(`Player ${socket.id} played card ${cardData.color} ${cardData.value}`);
+        // 2. Magic Socket.io Command: Put this socket into a dedicated channel
+        socket.join(roomCode);
+        // 3. Add player to the game logic
+        game.addPlayer(socket.id, data.name);
+        // 4. Remember what room this socket is in for future requests
+        socket.data.roomCode = roomCode;
+        console.log(`${data.name} joined room ${roomCode}`);
+        // 5. Broadcast updated lobby data to EVERYONE IN THIS SPECIFIC ROOM ONLY
+        io.to(roomCode).emit("lobbyUpdated", game.getLobbyData());
     });
-    socket.on("drawCardRequest", () => {
-        const result = activeGame.tryDrawCard(socket.id);
-        if (!result.success) {
-            console.log(`Invalid draw card by ${socket.id} . Reason: ${result.reason}`);
-            return;
-        }
-        const drawnCard = result.cardData;
-        console.log(`Player ${socket.id} drew ${drawnCard.color} ${drawnCard.value}`);
-        socket.emit("drawCardResponse", drawnCard);
-    });
+    // --- Disconnect Handling ---
     socket.on("disconnect", () => {
-        console.log(`A user has disconnected. Socket ID: ${socket.id}`);
-        activeGame.removePlayer(socket.id);
-        io.emit("updateGameState", activeGame.getGameState());
+        const roomCode = socket.data.roomCode;
+        if (roomCode) {
+            const game = activeRooms.get(roomCode);
+            if (game) {
+                game.removePlayer(socket.id); // Remove from game logic
+                // If room is empty, delete it from the server memory!
+                if (game.turnOrder.length === 0) {
+                    activeRooms.delete(roomCode);
+                    console.log(`Room ${roomCode} is empty, deleted.`);
+                }
+                else {
+                    // Tell remaining players someone left
+                    io.to(roomCode).emit("lobbyUpdated", game.getLobbyData());
+                    console.log(`${socket.id} disconnected`);
+                }
+            }
+        }
     });
+    // TODO: playCardRequest and drawCardRequest
 });
 server.listen(PORT, () => {
     console.log(`UNO server listening on http://localhost:${PORT}`);
