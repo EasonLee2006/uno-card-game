@@ -7,7 +7,7 @@ export class UnoGame {
     public rules: GameRules;
 
     private deck: Card[] = [];
-    public tableCard: Card | undefined = undefined;
+    public tableCards: Card[] = [];
 
 
     public setPlayerHand( socketID: string, cards: Card[] ): void{
@@ -29,12 +29,9 @@ export class UnoGame {
     }
 
     public getGameState(): Gamestate{
-        return { tableCard: this.tableCard, activePlayerID: this.getActivePlayerID() };
+        return { tableCard: this.tableCards.at(-1), activePlayerID: this.getActivePlayerID() };
+        // .at(-1) returns the last element of the array
     }
-
-    private totalPenalty = 0;
-    public getTotalPenalty(){ return this.totalPenalty; }
-
 
     // ********** constructor **********
 
@@ -77,6 +74,7 @@ export class UnoGame {
     }
 
     private getNextPlayerIndex( index: number, cardData?: Card ): number{
+        // TODO: seperate the card effect?
         if( this.turnOrder.length <= 0 ) return 0; // no players left
 
         let steps: number = 1; // default 1 step
@@ -135,6 +133,65 @@ export class UnoGame {
         this.turnDirection *= -1;
     }
 
+    private dealCardsToPlayers(): void{
+        // Deal 7 cards to each player
+        for( let i=0 ; i<this.turnOrder.length ; i++ ){
+            let startingHand :Card[] = [];
+            for (let i = 0; i < 7; i++) {
+                if (this.deck.length <= 0) {
+                    console.log("deck is empty, cannot draw cards");
+                }
+                else startingHand.push(this.deck.pop()!);
+            }
+
+            this.players[ this.turnOrder[i]! ]!.hand = startingHand;
+        }
+    }
+
+    private checkCardPlayLegality( cards: Card[] ): boolean{
+        //make sure they actually play cards
+        if( cards.length < 1 ){
+            return false;
+        }
+
+        // check for single card
+        if( cards[0] != undefined ){
+            const isValid: boolean = cards[0]!.color == this.tableCards.at(-1)!.color || cards[0]!.value == this.tableCards.at(-1)!.value;
+            return isValid;
+        }
+
+        // TODO: check for multi cards
+
+        return true;
+    }
+
+    private removeCardsFromPlayer( socketID: string, cards: Card[] ): {success: boolean, reason?: string}{
+        
+        // check if the player exists
+        const playerHand = this.players[socketID]?.hand;
+        if( !playerHand ){
+            return { success: false, reason: "player not found"};
+        }
+
+        // make sure to remove at least 1 card
+        if( cards.length <= 0 ){
+            return {success: false, reason: "no cards to remove"};
+        }
+
+        // make sure card is in hand
+        const cardIndex = this.players[socketID]!.hand.findIndex( c => c.color == cards[0]!.color && c.value == cards[0]!.value )
+        if( cardIndex < 0 ){
+            return { success: false, reason: "cannot find card in hand"};
+        }
+
+        // remove the actual card
+        playerHand.splice( cardIndex, 1 );
+        this.players[socketID]!.hand = playerHand; // applies the change to the actual memory
+        return {success: true}
+
+        
+        // TODO: check for multi card plays
+    }
 
     // ********** public functions **********
 
@@ -184,88 +241,60 @@ export class UnoGame {
         }
     }
 
+    public startGame(): void {
+        this.state = "PLAYING";
+
+        this.dealCardsToPlayers();
+        
+        // Flip the first card to start the discard pile
+        // We keep drawing until we get a normal card (no wilds to start)
+        do {
+            this.tableCards.push( this.deck.pop()! );
+        } while (this.tableCards.at(-1)!.value === 'wild');
+        
+        console.log(`Game started! First card is ${this.tableCards.at(-1)!.color} ${this.tableCards.at(-1)!.value}`);
+        
+    }
     
-
-    public tryPlayCard( socketID: string, cardData: Card ): { success: boolean, reason?: string, affectedPlayers: {socketID: string, action: string}[] }{
-        let affectedPlayers: {socketID: string, action: string}[] = [];
-
-        // turn-based
+    public playcard( socketID: string, cards: Card[] ): {success: boolean, reason?: string}{
         const activePlayerID: string | undefined = this.getActivePlayerID();
-        if( socketID !== activePlayerID ){
-            return { success: false, reason: "It is not your turn!", affectedPlayers };
-        }
 
         // check if the player exists
         const playerHand = this.players[socketID]?.hand;
         if( !playerHand ){
-            return { success: false, reason: "player not found", affectedPlayers};
+            return { success: false, reason: "player not found"};
         }
+
+        // make sure the game knows who is the active player
+        if( !activePlayerID ){
+            return {success: false, reason:"cannot find active player"};
+        }
+
+        // check if it is their turn
+        if( socketID != activePlayerID ){
+            return { success: false, reason: "It is not your turn!" };
+        }
+
+        // TODO: anti-cheat
+
+        // check if it is legal to play card(s)
+        if( !this.checkCardPlayLegality( cards ) ){
+            return { success: false, reason: "card play isn't legal" }
+        }
+
+        // *** all tests passed, play the card ***
+        const removeResult: {success: boolean, reason?: string} = this.removeCardsFromPlayer( socketID, cards );
+        if( !removeResult.success ){
+            return removeResult;
+        }
+        this.tableCards.push(...cards); // pushes the cards to the discard pile
+
+        // TODO: calculate card effects
+
+        // pass the turn to next player
+        this.currentPlayerIndex = this.getNextPlayerIndex( this.currentPlayerIndex, cards.at(-1) );
         
-        // check if player is cheating
-        const cardIndex = playerHand.findIndex( c => c.color == cardData.color && c.value == cardData.value )
-        if( cardIndex < 0 ){
-            affectedPlayers.push( {socketID: socketID, action: "cheating"} );
-            return { success: false, reason: "cannot find card in hand", affectedPlayers};
-        }
-
-        // check if it's legal to play card
-        if( this.tableCard != undefined){
-            const isValid: boolean = cardData.color == this.tableCard.color || cardData.value == this.tableCard.value;
-            if ( !isValid ) return { success: false, reason: "card doesn't match", affectedPlayers };
-        }
-
-        // *** play card ***
-        // remove card from player (server side)
-        playerHand.splice( cardIndex, 1 );
-        this.tableCard = cardData;
-        affectedPlayers.push( {socketID: socketID, action: "play card"} );
-
-        // check for penalty cards
-        // const punnishPlayerID: string = this.turnOrder[ this.getNextPlayerIndex( this.currentPlayerIndex ) ]!;
-        // if( cardData.value == "+2" ){
-        //     this.totalPenalty += 2;
-        // }else if ( cardData.value == "+4" ){
-        //     this.totalPenalty += 4;
-        // }
-        // this.forceDrawCard( punnishPlayerID, this.totalPenalty );
-        // affectedPlayers.push( {socketID: punnishPlayerID, action: `draw ${this.totalPenalty} cards`} );
-
-        // this.totalPenalty = 0; // reset total penalty
-
-        // pass turn to next player
-        this.currentPlayerIndex = this.getNextPlayerIndex( this.currentPlayerIndex, cardData );
-        
-        return {success: true, affectedPlayers};
-    }
-
-    public forceDrawCard( socketID: string, num: number ): {success: boolean, reason?: string, cards: Card[]}{
-        let drawnCards: Card[] = [];
-        
-        // make sure deck isnt empty
-        if ( this.deck.length < num ) return {success: false, reason: "not enough cards in deck", cards: drawnCards};
-
-        for( let i=0 ; i<num ; i++ ){
-            drawnCards.push( this.deck.pop()! );
-            this.players[socketID]?.hand.push( drawnCards[i]! );
-        }
-        return {success: true, cards: drawnCards};
-    }
-
-    public tryDrawCard( socketID: string ): {success: boolean, reason?: string, cardData?: Card}{
-        const activePlayerID: string | undefined = this.turnOrder[ this.currentPlayerIndex ];
-        
-        // turn-based
-        if( socketID !== activePlayerID ) return { success: false, reason: "It is not your turn!" };
-
-        // make sure deck isnt empty
-        if ( this.deck.length <= 0 ) return {success: false, reason: "deck is empty"};
-
-        // (success)
-        const drawnCard = this.deck.pop()!;
-        if( this.players[socketID] ){
-            this.players[ socketID ].hand.push( drawnCard );
-        }
-        return {success: true, cardData: drawnCard};
+        return {success: true};
     }
 
     // debug
@@ -274,7 +303,7 @@ export class UnoGame {
             turnOrder: this.turnOrder,
             currentPlayerIndex: this.currentPlayerIndex,
             playDirection: this.turnDirection,
-            tableCard: this.tableCard,
+            tableCard: this.tableCards,
             deckSize: this.deck.length, 
             players: this.players
         };

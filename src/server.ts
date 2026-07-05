@@ -3,6 +3,7 @@ import express from "express";
 import http from "http";
 import { Server, Socket } from 'socket.io';
 import { UnoGame } from './UnoGame';
+import { Card } from "./types";
 
 const app = express();
 const server = http.createServer(app);
@@ -18,7 +19,7 @@ io.on("connection", (socket: Socket) => {
 
     // --- STEP 1: Joining a Lobby ---
     socket.on("joinRoom", (data: { name: string, roomCode: string }) => {
-        const roomCode = data.roomCode.toUpperCase();
+        const roomCode: string = data.roomCode.toUpperCase();
         
         // 1. Check if room exists. If not, create it.
         let game = activeRooms.get(roomCode);
@@ -64,7 +65,53 @@ io.on("connection", (socket: Socket) => {
         }
     });
 
-    // TODO: playCardRequest and drawCardRequest
+    socket.on("startGame", () => {
+        const roomCode = socket.data.roomCode;
+        if (!roomCode) return;
+        
+        const game = activeRooms.get(roomCode);
+        
+        // Security check: Only the host can start the game!
+        if (game && game.players[socket.id]?.isHost) {
+            game.startGame();
+            
+            // 1. Broadcast to everyone in the room that the game is on
+            io.to(roomCode).emit("gameStarted", {
+                tableCards: game.tableCards,
+                turnOrder: game.turnOrder,
+                currentPlayerIndex: game.currentPlayerIndex,
+                players: game.getLobbyData().players // Send player names for the UI
+            });
+            
+            // 2. Send each player their specific, private hand
+            game.turnOrder.forEach(playerId => {
+                io.to(playerId).emit("yourHand", game.players[playerId]!.hand);
+            });
+        }
+    });
+
+    // TODO: drawCardRequest
+    socket.on("playCardRequest", (cards: Card[]) => {
+        // TODO: handle multi card play in 1 round
+        const roomCode = socket.data.roomCode;
+        if (!roomCode) return;
+        
+        const game = activeRooms.get(roomCode);
+        if( !game ){
+            console.log(`cannot find game with room code "${roomCode}"`);
+            return;
+        }
+
+        const result = game.playcard(socket.id, cards);
+        if (!result.success) {
+            console.log(`Invalid card play by ${socket.id} . Reason: ${result.reason}`);
+            return;
+        }
+        game.tableCards.push( ...cards );
+        io.emit("updateGameState", game.getGameState());
+
+        console.log(`Player ${socket.id} played card ${cards[0]!.color} ${cards[0]!.value}`);
+    });
 });
 
 server.listen(PORT, () => {

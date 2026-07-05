@@ -4,21 +4,22 @@ export declare class UnoGame {
     state: "LOBBY" | "PLAYING" | "FINISHED";
     rules: GameRules;
     private deck;
-    tableCard: Card | undefined;
+    tableCards: Card[];
     setPlayerHand(socketID: string, cards: Card[]): void;
     turnOrder: string[];
     currentPlayerIndex: number;
     turnDirection: 1 | -1;
     getActivePlayerID(): string | undefined;
     getGameState(): Gamestate;
-    private totalPenalty;
-    getTotalPenalty(): number;
     constructor();
     private buildDeck;
     private shuffle;
     private getNextPlayerIndex;
     private handleTurnIndexOnDisconnection;
     private reverseTurnDirection;
+    private dealCardsToPlayers;
+    private checkCardPlayLegality;
+    private removeCardsFromPlayer;
     addPlayer(socketId: string, playerName: string): void;
     getLobbyData(): {
         players: {
@@ -29,29 +30,16 @@ export declare class UnoGame {
         rules: GameRules;
     };
     removePlayer(socketId: string): void;
-    tryPlayCard(socketID: string, cardData: Card): {
+    startGame(): void;
+    playcard(socketID: string, cards: Card[]): {
         success: boolean;
         reason?: string;
-        affectedPlayers: {
-            socketID: string;
-            action: string;
-        }[];
-    };
-    forceDrawCard(socketID: string, num: number): {
-        success: boolean;
-        reason?: string;
-        cards: Card[];
-    };
-    tryDrawCard(socketID: string): {
-        success: boolean;
-        reason?: string;
-        cardData?: Card;
     };
     getGameStateSnapshot(): {
         turnOrder: string[];
         currentPlayerIndex: number;
         playDirection: 1 | -1;
-        tableCard: Card | undefined;
+        tableCard: Card[];
         deckSize: number;
         players: Record<string, Player>;
     };
