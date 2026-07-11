@@ -78,8 +78,7 @@ io.on("connection", (socket: Socket) => {
             // 1. Broadcast to everyone in the room that the game is on
             io.to(roomCode).emit("gameStarted", {
                 tableCards: game.tableCards,
-                turnOrder: game.turnOrder,
-                currentPlayerIndex: game.currentPlayerIndex,
+                activePlayerID: game.getActivePlayerID(),
                 players: game.getLobbyData().players // Send player names for the UI
             });
             

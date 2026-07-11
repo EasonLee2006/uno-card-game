@@ -5,9 +5,8 @@ export declare class UnoGame {
     rules: GameRules;
     private deck;
     tableCards: Card[];
-    setPlayerHand(socketID: string, cards: Card[]): void;
     turnOrder: string[];
-    currentPlayerIndex: number;
+    private activePlayerIndex;
     turnDirection: 1 | -1;
     getActivePlayerID(): string | undefined;
     getGameState(): Gamestate;

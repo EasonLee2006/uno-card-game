@@ -4,7 +4,7 @@ export interface Card {
     value: string;
 }
 export interface Gamestate {
-    tableCard: Card | undefined;
+    discardPile: Card[];
     activePlayerID: string | undefined;
 }
 export interface Player {

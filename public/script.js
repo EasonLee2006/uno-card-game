@@ -63,24 +63,28 @@ socket.on('lobbyUpdated', (lobbyData) => {
 
 let myHand = [];
 let myTurn = false;
+let discardPile = [];
 
 // Host clicks the start button
 document.getElementById('start-game-btn').addEventListener('click', () => {
     socket.emit('startGame');
 });
 
-function renderTableCards( cards ){
+// updates the discard pile, also renders the discard pile
+function updateDiscardPile( cards ){
     if( !cards ){
         console.log("discard pile is empty");
-        discardPile.className = "";
-        discardPile.innerHTML = "";
+        discardPileDisplay.className = "";
+        discardPileDisplay.innerHTML = "";
+        discardPile = [];
         return;
     }
 
-    const discardPile = document.getElementById('discard-pile');
-    discardPile.className = `card ${cards.at(-1).color}`;
-    discardPile.innerText = cards.at(-1).value;
-    console.log(`rendered table card ${cards.at(-1)}`);
+    const discardPileDisplay = document.getElementById('discard-pile');
+    discardPileDisplay.className = `card ${cards.at(-1).color}`;
+    discardPileDisplay.innerText = cards.at(-1).value;
+    discardPile = cards;
+    console.log(`updated and rendered discrad pile ${cards.at(-1).color} ${cards.at(-1).value}`);
     return;
 }
 
@@ -88,7 +92,7 @@ function renderTableCards( cards ){
 socket.on('gameStarted', (data) => {
     showScreen('game');
     
-    renderTableCards(data.tableCards);
+    updateDiscardPile(data.tableCards);
     
     // 2. Render Opponents (Balatro Style Top Layout)
     const opponentsContainer = document.getElementById('opponents-top');
@@ -105,6 +109,11 @@ socket.on('gameStarted', (data) => {
             opponentsContainer.appendChild(oppDiv);
         }
     });
+
+    // check if it's my turn
+    if( data.activePlayerID === socket.id ){
+        myTurn = true;
+    }
 });
 
 // *** Hand Rendering Logic ***
@@ -113,10 +122,14 @@ socket.on('yourHand', (hand) => {
     myHand = hand;
 
     // update display
+    renderMyHand();
+});
+
+function renderMyHand(){
     const handContainer = document.getElementById('player-hand-bottom');
     handContainer.innerHTML = '';
     
-    hand.forEach((card, index) => {
+    myHand.forEach((card, index) => {
         const cardElement = document.createElement('div');
         cardElement.className = `card ${card.color}`;
         cardElement.innerText = card.value;
@@ -143,7 +156,7 @@ socket.on('yourHand', (hand) => {
 
         handContainer.appendChild(cardElement);
     });
-});
+}
 
 // DRAG OVER LOGIC: Allowing cards to be reordered in the hand
 const handContainer = document.getElementById('player-hand-bottom');
@@ -179,22 +192,8 @@ function getDragAfterElement(container, x) {
     }, { offset: Number.NEGATIVE_INFINITY }).element;
 }
 
-
 socket.on( "updateGameState", (gameState)=>{
-
-    // *** update table card ***
-    const discardPile = document.getElementById("discard-pile");
-
-    if( gameState.tableCard == undefined ){ // when discard pile is empty
-        console.log("discard pile is empty");
-        discardPile.className = "";
-        discardPile.innerHTML = "";
-    }else{
-        console.log("update table card");
-        discardPile.className = `card ${gameState.tableCard.color}`;
-        discardPile.innerHTML = gameState.tableCard.value;
-    }
-
+    updateDiscardPile( gameState.discardPile );
 
     // *** update turns ***
     if( gameState.activePlayerID == socket.id ){
@@ -213,23 +212,103 @@ document.getElementById('btn-play').addEventListener('click', () => {
         alert("Please select a card first!");
         return;
     }
+
+    if( !myTurn ){
+        alert("It's not your turn yet");
+        return;
+    }
     
     // TODO: allow multi cards play in one round (custome rules)
     const cardsToPlay = [{
         color: selectedCards[0].dataset.color,
         value: selectedCards[0].dataset.value
     }];
+
+    // check if it's allowed to play on client side
+    if( canPlayCards( cardsToPlay ) ){
+        // if it's allowed, render the result on the client side
+        removeCardsOnce( cardsToPlay );
+        discardPile.push(...cardsToPlay);
+        updateDiscardPile(discardPile);
+    }
+
+    // TODO: prevent cheating
     
     socket.emit('playCardRequest', cardsToPlay);
 });
 
-// draw card
-const drawCardButton = document.getElementById("btn-draw");
-drawCardButton.addEventListener( "click", () => {
-    if( !myTurn ){
-        console.log("not your turn");
+// client side check to see if cards can be played
+function canPlayCards( cards ){
+    // copied from file `UnoGame.ts`
+    // make sure they actually play cards
+    if( cards.length != 1 ){
+        alert("please select exactly 1 card");
+        return false;
+    }
+
+    // check if discard pile is empty
+    if( !discardPile ){
+        return true;
+    }
+
+    // check for single card
+    if( cards[0] != undefined ){
+        const isValid = cards[0].color == discardPile.at(-1).color || cards[0].value == discardPile.at(-1).value;
+        return isValid;
+    }
+
+    // TODO: check for multi cards
+
+    return true;
+}
+
+// removes cards from hand, also renders the hand
+function removeCardsOnce(cards){
+    const leftoverHand = getObjectArrayDifference( myHand, cards );
+    // make sure we removed the cards 
+    if( leftoverHand.length != myHand.length - cards.length ){
+        console.error( "something went wrong when removing cards" );
         return;
     }
-    
-    socket.emit("drawCardRequest");
-} );
+
+    myHand = leftoverHand;
+    renderMyHand();
+}
+
+function getObjectArrayDifference(arr1, arr2, keyFn = item => JSON.stringify(item) ) {
+    const countMap = new Map();
+    // We also need to store the actual objects to reconstruct the array later
+    const objectMap = new Map(); 
+
+    // Count occurrences in the first array
+    for (const item of arr1) {
+        const key = keyFn(item);
+        countMap.set(key, (countMap.get(key) || 0) + 1);
+        objectMap.set(key, item); // Keep track of the original object reference
+    }
+
+    // Decrement occurrences based on the second array
+    for (const item of arr2) {
+        const key = keyFn(item);
+        if (countMap.has(key)) {
+        const currentCount = countMap.get(key);
+        if (currentCount === 1) {
+            countMap.delete(key);
+            objectMap.delete(key);
+        } else {
+            countMap.set(key, currentCount - 1);
+        }
+        }
+    }
+
+    // Reconstruct the remaining objects
+    const difference = [];
+    for (const [key, count] of countMap.entries()) {
+        const originalItem = objectMap.get(key);
+        for (let i = 0; i < count; i++) {
+        difference.push(originalItem);
+        }
+    }
+
+    return difference;
+}

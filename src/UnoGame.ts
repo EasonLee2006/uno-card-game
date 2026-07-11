@@ -9,27 +9,16 @@ export class UnoGame {
     private deck: Card[] = [];
     public tableCards: Card[] = [];
 
-
-    public setPlayerHand( socketID: string, cards: Card[] ): void{
-        if( !this.players[socketID] ){
-            console.log("player not found");
-            return;
-        }
-        // will not remove cards from drawing pile
-        this.players[socketID].hand = cards;
-        return;
-    }
-
     public turnOrder: string[] = [];
-    public currentPlayerIndex: number = 0;
+    private activePlayerIndex: number = 0;
     public turnDirection: 1|-1 = 1;
 
     public getActivePlayerID(): string | undefined{
-        return this.turnOrder[this.currentPlayerIndex];
+        return this.turnOrder[this.activePlayerIndex];
     }
 
     public getGameState(): Gamestate{
-        return { tableCard: this.tableCards.at(-1), activePlayerID: this.getActivePlayerID() };
+        return { discardPile: this.tableCards, activePlayerID: this.getActivePlayerID() };
         // .at(-1) returns the last element of the array
     }
 
@@ -101,10 +90,10 @@ export class UnoGame {
         const index = this.turnOrder.indexOf( socketID );
         if( index <= -1 ){
             console.log("cannot find player to disconnect");
-            return this.currentPlayerIndex;
+            return this.activePlayerIndex;
         }
-        if( index != this.currentPlayerIndex ){ // disconnected player isn't active
-            let result = this.currentPlayerIndex;
+        if( index != this.activePlayerIndex ){ // disconnected player isn't active
+            let result = this.activePlayerIndex;
             if( index < result ){
                 result--;
             }
@@ -114,7 +103,7 @@ export class UnoGame {
         else{ // disconnected player is active
 
             // pass to the next player, also prevents negative modulation
-            let result: number = this.getNextPlayerIndex( this.currentPlayerIndex );
+            let result: number = this.getNextPlayerIndex( this.activePlayerIndex );
             
             this.turnOrder.splice(index, 1);
             if( this.turnOrder.length <= 0 ) return 0; // no players left
@@ -150,8 +139,13 @@ export class UnoGame {
 
     private checkCardPlayLegality( cards: Card[] ): boolean{
         //make sure they actually play cards
-        if( cards.length < 1 ){
+        if( cards.length != 1 ){
             return false;
+        }
+
+        // check if discard pile is empty
+        if( !this.tableCards ){
+            return true;
         }
 
         // check for single card
@@ -162,7 +156,7 @@ export class UnoGame {
 
         // TODO: check for multi cards
 
-        return true;
+        return false;
     }
 
     private removeCardsFromPlayer( socketID: string, cards: Card[] ): {success: boolean, reason?: string}{
@@ -228,7 +222,7 @@ export class UnoGame {
         delete this.players[socketId];
         
         // 3. Remove them from the turn ring
-        this.currentPlayerIndex = this.handleTurnIndexOnDisconnection( socketId );
+        this.activePlayerIndex = this.handleTurnIndexOnDisconnection( socketId );
 
 
         // --- NEW: HOST MIGRATION ---
@@ -292,7 +286,7 @@ export class UnoGame {
         // TODO: calculate card effects
 
         // pass the turn to next player
-        this.currentPlayerIndex = this.getNextPlayerIndex( this.currentPlayerIndex, cards.at(-1) );
+        this.activePlayerIndex = this.getNextPlayerIndex( this.activePlayerIndex, cards.at(-1) );
         
         return {success: true};
     }
@@ -301,7 +295,7 @@ export class UnoGame {
     public getGameStateSnapshot() {
         return {
             turnOrder: this.turnOrder,
-            currentPlayerIndex: this.currentPlayerIndex,
+            currentPlayerIndex: this.activePlayerIndex,
             playDirection: this.turnDirection,
             tableCard: this.tableCards,
             deckSize: this.deck.length, 

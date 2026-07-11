@@ -8,23 +8,14 @@ class UnoGame {
     rules;
     deck = [];
     tableCards = [];
-    setPlayerHand(socketID, cards) {
-        if (!this.players[socketID]) {
-            console.log("player not found");
-            return;
-        }
-        // will not remove cards from drawing pile
-        this.players[socketID].hand = cards;
-        return;
-    }
     turnOrder = [];
-    currentPlayerIndex = 0;
+    activePlayerIndex = 0;
     turnDirection = 1;
     getActivePlayerID() {
-        return this.turnOrder[this.currentPlayerIndex];
+        return this.turnOrder[this.activePlayerIndex];
     }
     getGameState() {
-        return { tableCard: this.tableCards.at(-1), activePlayerID: this.getActivePlayerID() };
+        return { discardPile: this.tableCards, activePlayerID: this.getActivePlayerID() };
         // .at(-1) returns the last element of the array
     }
     // ********** constructor **********
@@ -84,10 +75,10 @@ class UnoGame {
         const index = this.turnOrder.indexOf(socketID);
         if (index <= -1) {
             console.log("cannot find player to disconnect");
-            return this.currentPlayerIndex;
+            return this.activePlayerIndex;
         }
-        if (index != this.currentPlayerIndex) { // disconnected player isn't active
-            let result = this.currentPlayerIndex;
+        if (index != this.activePlayerIndex) { // disconnected player isn't active
+            let result = this.activePlayerIndex;
             if (index < result) {
                 result--;
             }
@@ -96,7 +87,7 @@ class UnoGame {
         }
         else { // disconnected player is active
             // pass to the next player, also prevents negative modulation
-            let result = this.getNextPlayerIndex(this.currentPlayerIndex);
+            let result = this.getNextPlayerIndex(this.activePlayerIndex);
             this.turnOrder.splice(index, 1);
             if (this.turnOrder.length <= 0)
                 return 0; // no players left
@@ -126,16 +117,20 @@ class UnoGame {
     }
     checkCardPlayLegality(cards) {
         //make sure they actually play cards
-        if (cards.length < 1) {
+        if (cards.length != 1) {
             return false;
         }
+        // check if discard pile is empty
+        if (!this.tableCards) {
+            return true;
+        }
         // check for single card
-        if (this.tableCards != undefined) {
+        if (cards[0] != undefined) {
             const isValid = cards[0].color == this.tableCards.at(-1).color || cards[0].value == this.tableCards.at(-1).value;
             return isValid;
         }
         // TODO: check for multi cards
-        return true;
+        return false;
     }
     removeCardsFromPlayer(socketID, cards) {
         // check if the player exists
@@ -186,7 +181,7 @@ class UnoGame {
         // 2. Remove them from the player dictionary
         delete this.players[socketId];
         // 3. Remove them from the turn ring
-        this.currentPlayerIndex = this.handleTurnIndexOnDisconnection(socketId);
+        this.activePlayerIndex = this.handleTurnIndexOnDisconnection(socketId);
         // --- NEW: HOST MIGRATION ---
         // If the old host left, and there is still at least one person in the room...
         if (wasHost && this.turnOrder.length > 0) {
@@ -234,14 +229,14 @@ class UnoGame {
         this.tableCards.push(...cards); // pushes the cards to the discard pile
         // TODO: calculate card effects
         // pass the turn to next player
-        this.currentPlayerIndex = this.getNextPlayerIndex(this.currentPlayerIndex, cards.at(-1));
+        this.activePlayerIndex = this.getNextPlayerIndex(this.activePlayerIndex, cards.at(-1));
         return { success: true };
     }
     // debug
     getGameStateSnapshot() {
         return {
             turnOrder: this.turnOrder,
-            currentPlayerIndex: this.currentPlayerIndex,
+            currentPlayerIndex: this.activePlayerIndex,
             playDirection: this.turnDirection,
             tableCard: this.tableCards,
             deckSize: this.deck.length,
