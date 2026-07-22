@@ -34,6 +34,11 @@ export declare class UnoGame {
         success: boolean;
         reason?: string;
     };
+    drawCards(socketID: string, ammount: number): {
+        success: boolean;
+        cards: Card[];
+        reason?: string;
+    };
     getGameStateSnapshot(): {
         turnOrder: string[];
         currentPlayerIndex: number;

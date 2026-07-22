@@ -77,7 +77,6 @@ io.on("connection", (socket) => {
             });
         }
     });
-    // TODO: drawCardRequest
     socket.on("playCardRequest", (cards) => {
         // TODO: handle multi card play in 1 round
         const roomCode = socket.data.roomCode;
@@ -90,12 +89,28 @@ io.on("connection", (socket) => {
         }
         const result = game.playcard(socket.id, cards);
         if (!result.success) {
-            console.log(`Invalid card play by ${socket.id} . Reason: ${result.reason}`);
+            console.error(`Invalid card play by ${socket.id} . Reason: ${result.reason}`);
             return;
         }
-        game.tableCards.push(...cards);
         io.emit("updateGameState", game.getGameState());
         console.log(`Player ${socket.id} played card ${cards[0].color} ${cards[0].value}`);
+    });
+    socket.on("drawCardRequest", (ammount) => {
+        const roomCode = socket.data.roomCode;
+        if (!roomCode)
+            return;
+        const game = activeRooms.get(roomCode);
+        if (!game) {
+            console.log(`cannot find game with room code "${roomCode}"`);
+            return;
+        }
+        const result = game.drawCards(socket.id, ammount);
+        if (!result.success) {
+            console.error(`Invalid draw card by ${socket.id} . Reason: ${result.reason}`);
+            return;
+        }
+        socket.emit("addCards", result.cards);
+        console.log(`Player ${socket.id} drew ${ammount} cards`);
     });
 });
 server.listen(PORT, () => {

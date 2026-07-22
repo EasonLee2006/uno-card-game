@@ -204,6 +204,7 @@ socket.on( "updateGameState", (gameState)=>{
 });
 
 // --- Action Buttons ---
+// # play button
 document.getElementById('btn-play').addEventListener('click', () => {
     // Find all cards the user has clicked
     const selectedCards = document.querySelectorAll('#player-hand-bottom .selected');
@@ -312,3 +313,21 @@ function getObjectArrayDifference(arr1, arr2, keyFn = item => JSON.stringify(ite
 
     return difference;
 }
+
+// # draw button
+document.getElementById('btn-draw').addEventListener('click', () => {
+    if( !myTurn ){
+        alert("It's not your turn yet");
+        return;
+    }
+    socket.emit("drawCardRequest", 1);
+});
+
+// add cards to hand and render hand
+socket.on("addCards", (cards)=>{
+    if( !cards ){
+        console.log("no cards to be added");
+    }
+    myHand.push(...cards);
+    renderMyHand();
+});

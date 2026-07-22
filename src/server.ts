@@ -89,27 +89,45 @@ io.on("connection", (socket: Socket) => {
         }
     });
 
-    // TODO: drawCardRequest
     socket.on("playCardRequest", (cards: Card[]) => {
         // TODO: handle multi card play in 1 round
-        const roomCode = socket.data.roomCode;
+        const roomCode: string = socket.data.roomCode;
         if (!roomCode) return;
         
-        const game = activeRooms.get(roomCode);
+        const game: UnoGame | undefined = activeRooms.get(roomCode);
         if( !game ){
             console.log(`cannot find game with room code "${roomCode}"`);
             return;
         }
 
-        const result = game.playcard(socket.id, cards);
+        const result: {success: boolean, reason?: string} = game.playcard(socket.id, cards);
         if (!result.success) {
-            console.log(`Invalid card play by ${socket.id} . Reason: ${result.reason}`);
+            console.error(`Invalid card play by ${socket.id} . Reason: ${result.reason}`);
             return;
         }
-        game.tableCards.push( ...cards );
         io.emit("updateGameState", game.getGameState());
 
         console.log(`Player ${socket.id} played card ${cards[0]!.color} ${cards[0]!.value}`);
+    });
+
+    socket.on("drawCardRequest", (ammount: number)=>{
+        const roomCode: string = socket.data.roomCode;
+        if (!roomCode) return;
+        
+        const game: UnoGame | undefined = activeRooms.get(roomCode);
+        if( !game ){
+            console.log(`cannot find game with room code "${roomCode}"`);
+            return;
+        }
+
+        const result: {success: boolean, cards: Card[], reason?: string} = game.drawCards(socket.id, ammount);
+        if( !result.success ){
+            console.error(`Invalid draw card by ${socket.id} . Reason: ${result.reason}`);
+            return;
+        }
+
+        socket.emit("addCards", result.cards);
+        console.log(`Player ${socket.id} drew ${ammount} cards`);
     });
 });
 
