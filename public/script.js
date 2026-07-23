@@ -88,6 +88,21 @@ function updateDiscardPile( cards ){
     return;
 }
 
+// helper function on checking turns, also disables the play button and draw button when it's not your turn
+function updateTurn( activePlayerID ){
+    if( activePlayerID == socket.id ){
+        myTurn = true;
+        document.getElementById('btn-play').disabled = false;
+        document.getElementById('btn-draw').disabled = false;
+        console.log("updated turn, it's my turn");
+    }else{
+        myTurn = false;
+        document.getElementById('btn-play').disabled = true;
+        document.getElementById('btn-draw').disabled = true;
+        console.log("updated turn, it's not my turn yet");
+    }
+}
+
 // Everyone transitions to the game screen
 socket.on('gameStarted', (data) => {
     showScreen('game');
@@ -111,9 +126,7 @@ socket.on('gameStarted', (data) => {
     });
 
     // check if it's my turn
-    if( data.activePlayerID === socket.id ){
-        myTurn = true;
-    }
+    updateTurn( data.activePlayerID );
 });
 
 // *** Hand Rendering Logic ***
@@ -194,13 +207,7 @@ function getDragAfterElement(container, x) {
 
 socket.on( "updateGameState", (gameState)=>{
     updateDiscardPile( gameState.discardPile );
-
-    // *** update turns ***
-    if( gameState.activePlayerID == socket.id ){
-        myTurn = true;
-    }else{
-        myTurn = false;
-    }
+    updateTurn( gameState.activePlayerID );
 });
 
 // --- Action Buttons ---
